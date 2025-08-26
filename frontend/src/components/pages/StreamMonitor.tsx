@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { 
   Send, 
   Info, 
@@ -25,6 +23,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge, RiskBadge } from '@/components/ui/Badge'
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer'
 import { useConnection } from '@/utils/useConnection'
 import { useNotifications } from '@/components/ui/Notifications'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -814,57 +813,10 @@ const StreamMonitor: React.FC = () => {
                         `}>
                           {message.content ? (
                             message.role === 'assistant' ? (
-                              <div className="markdown-content">
-                                <ReactMarkdown 
-                                  remarkPlugins={[remarkGfm]}
-                                  components={{
-                                    code: ({node, inline, className, children, ...props}: any) => {
-                                      const match = /language-(\w+)/.exec(className || '')
-                                      return !inline && match ? (
-                                        <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-x-auto my-3 border">
-                                          <code className={`text-sm ${className}`} {...props}>
-                                            {children}
-                                          </code>
-                                        </pre>
-                                      ) : (
-                                        <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono" {...props}>
-                                          {children}
-                                        </code>
-                                      )
-                                    },
-                                    p: ({children}: any) => <p className="mb-3 last:mb-0 text-inherit">{children}</p>,
-                                    ul: ({children}: any) => <ul className="list-disc pl-6 mb-3 space-y-1">{children}</ul>,
-                                    ol: ({children}: any) => <ol className="list-decimal pl-6 mb-3 space-y-1">{children}</ol>,
-                                    li: ({children}: any) => <li className="text-inherit">{children}</li>,
-                                    h1: ({children}: any) => <h1 className="text-xl font-bold mb-3 mt-4 first:mt-0 text-inherit">{children}</h1>,
-                                    h2: ({children}: any) => <h2 className="text-lg font-bold mb-2 mt-4 first:mt-0 text-inherit">{children}</h2>,
-                                    h3: ({children}: any) => <h3 className="text-base font-bold mb-2 mt-3 first:mt-0 text-inherit">{children}</h3>,
-                                    blockquote: ({children}: any) => (
-                                      <blockquote className="border-l-4 border-blue-400 dark:border-blue-600 pl-4 py-2 my-3 bg-blue-50 dark:bg-blue-900/20 italic text-inherit">
-                                        {children}
-                                      </blockquote>
-                                    ),
-                                    table: ({children}: any) => (
-                                      <div className="overflow-x-auto my-3">
-                                        <table className="border-collapse border border-gray-300 dark:border-gray-600 min-w-full text-sm">
-                                          {children}
-                                        </table>
-                                      </div>
-                                    ),
-                                    th: ({children}: any) => <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 bg-gray-100 dark:bg-gray-800 font-bold text-left text-inherit">{children}</th>,
-                                    td: ({children}: any) => <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-inherit">{children}</td>,
-                                    a: ({children, href}: any) => (
-                                      <a href={href} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
-                                        {children}
-                                      </a>
-                                    ),
-                                    strong: ({children}: any) => <strong className="font-bold text-inherit">{children}</strong>,
-                                    em: ({children}: any) => <em className="italic text-inherit">{children}</em>,
-                                  }}
-                                >
-                                  {message.content}
-                                </ReactMarkdown>
-                              </div>
+                              <MarkdownRenderer 
+                                content={message.content}
+                                className="text-inherit"
+                              />
                             ) : (
                               <span>{message.content}</span>
                             )
