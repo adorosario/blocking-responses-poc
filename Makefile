@@ -40,7 +40,7 @@ rebuild: .env
 start: .env
 	docker-compose up -d api web
 	@echo "Services starting at:"
-	@echo "  Web Interface: http://localhost"
+	@echo "  Web Interface: http://localhost:3000"
 	@echo "  API: http://localhost:8000"
 
 # Development mode (with logs)
@@ -56,10 +56,10 @@ prod: .env
 monitoring: .env
 	docker-compose --profile monitoring up -d
 	@echo "Services available at:"
-	@echo "  Web Interface: http://localhost"
+	@echo "  Web Interface: http://localhost:3000"
 	@echo "  API: http://localhost:8000"
 	@echo "  Prometheus: http://localhost:9090"
-	@echo "  Grafana: http://localhost:3000"
+	@echo "  Grafana: http://localhost:3001"
 
 # Run tests
 test: .env
@@ -97,7 +97,7 @@ shell:
 health:
 	@echo "Checking service health..."
 	@curl -f http://localhost:8000/health 2>/dev/null && echo "✓ API is healthy" || echo "✗ API is not responding"
-	@curl -f http://localhost/nginx-health 2>/dev/null && echo "✓ Web interface is healthy" || echo "✗ Web interface is not responding"
+	@curl -f http://localhost:3000/health 2>/dev/null && echo "✓ Web interface is healthy" || echo "✗ Web interface is not responding"
 
 # Show status
 status:

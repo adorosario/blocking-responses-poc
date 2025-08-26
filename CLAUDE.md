@@ -103,7 +103,7 @@ make monitoring
 make dev
 
 # Access services:
-# Web Interface: http://localhost
+# Web Interface: http://localhost:3000
 # API: http://localhost:8000
 # API Documentation: http://localhost:8000/docs
 ```

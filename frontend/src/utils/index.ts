@@ -8,9 +8,9 @@ export function cn(...inputs: ClassValue[]) {
 
 // Date formatting utilities
 export const formatters = {
-  datetime: (date: string | Date) => format(new Date(date), 'MMM d, yyyy HH:mm:ss'),
+  datetime: (date: string | Date) => new Date(date).toLocaleString(),
   date: (date: string | Date) => format(new Date(date), 'MMM d, yyyy'),
-  time: (date: string | Date) => format(new Date(date), 'HH:mm:ss'),
+  time: (date: string | Date) => new Date(date).toLocaleTimeString(),
   relative: (date: string | Date) => formatDistance(new Date(date), new Date(), { addSuffix: true }),
   relativeShort: (date: string | Date) => formatRelative(new Date(date), new Date()),
 }

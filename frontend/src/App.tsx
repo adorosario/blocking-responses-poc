@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useDashboardStore } from '@/stores/dashboard'
 import { applyTheme } from '@/utils'
+import { NotificationProvider } from '@/components/ui/Notifications'
 import Layout from '@/components/Layout'
 import Dashboard from '@/components/pages/Dashboard'
 import TestSuite from '@/components/pages/TestSuite'
@@ -29,21 +30,23 @@ const App: React.FC = () => {
   }, [theme])
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gray-50 dark:bg-gray-900"
-    >
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/testing" element={<TestSuite />} />
-          <Route path="/stream" element={<StreamMonitor />} />
-          <Route path="/audit" element={<AuditLogs />} />
-        </Routes>
-      </Layout>
-    </motion.div>
+    <NotificationProvider>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="h-screen bg-gray-50 dark:bg-gray-900"
+      >
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/testing" element={<TestSuite />} />
+            <Route path="/stream" element={<StreamMonitor />} />
+            <Route path="/audit" element={<AuditLogs />} />
+          </Routes>
+        </Layout>
+      </motion.div>
+    </NotificationProvider>
   )
 }
 

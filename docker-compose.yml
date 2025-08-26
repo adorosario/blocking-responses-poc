@@ -5,6 +5,8 @@ services:
     container_name: blocking-responses-api
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       # Required - set your OpenAI API key
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -14,10 +16,10 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DELAY_TOKENS=${DELAY_TOKENS:-20}
       - DELAY_MS=${DELAY_MS:-250}
-      - RISK_THRESHOLD=${RISK_THRESHOLD:-1.0}
+      - RISK_THRESHOLD=${RISK_THRESHOLD:-0.9}
       - JUDGE_THRESHOLD=${JUDGE_THRESHOLD:-0.8}
       - ENABLE_JUDGE=${ENABLE_JUDGE:-true}
-      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080}
     volumes:
       # Mount source for development (comment out for production)
       - ./app.py:/app/app.py
@@ -35,8 +37,8 @@ services:
     build: ./frontend
     container_name: compliance-dashboard-frontend
     ports:
-      - "80:80"
-      - "443:443"  # For future SSL setup
+      - "3000:80"
+      - "3443:443"  # For future SSL setup
     depends_on:
       api:
         condition: service_healthy
@@ -103,7 +105,7 @@ services:
     image: grafana/grafana:latest
     container_name: blocking-responses-grafana
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro

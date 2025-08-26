@@ -101,7 +101,16 @@ class ApiClient {
 
   // Testing endpoints
   async runTestSuite(suiteNames?: string[]) {
-    return this.request<{ session_id: string; status: string }>(
+    return this.request<{ 
+      session_id: string; 
+      status: string; 
+      output?: string;
+      summary?: {
+        passed: number;
+        failed: number;
+        total: number;
+      }
+    }>(
       '/test/run',
       {
         method: 'POST',
@@ -115,11 +124,30 @@ class ApiClient {
   }
 
   async getAllTestSuites() {
-    return this.request<TestSuite[]>('/test/suites')
+    return this.request<{
+      suites: Array<{
+        id: string;
+        name: string;
+        description: string;
+        tests: number;
+        status: string;
+        passed: number;
+        failed: number;
+      }>
+    }>('/test/suites')
   }
 
-  // Audit endpoints
-  async getAuditLogs(filters: {
+  // Simple audit logs endpoint
+  async getAuditLogs(limit: number = 100) {
+    return this.request<{
+      logs: AuditEvent[]
+      count: number
+      total_available: number
+    }>(`/audit-logs?limit=${limit}`)
+  }
+
+  // Compliance audit logs with filters
+  async getComplianceAuditLogs(filters: {
     limit?: number
     offset?: number
     compliance_type?: string
@@ -135,10 +163,10 @@ class ApiClient {
     })
     
     return this.request<{
-      events: AuditEvent[]
-      total: number
-      has_more: boolean
-    }>(`/compliance/audit-logs?${params}`)
+      logs: AuditEvent[]
+      count: number
+      total_available: number
+    }>(`/audit-logs?${params}`)
   }
 
   // Streaming endpoints
@@ -147,6 +175,7 @@ class ApiClient {
     model?: string
     compliance_type?: string
     threshold?: number
+    api_key?: string
   }) {
     return this.request<{ session_id: string; stream_url: string }>(
       '/chat/stream',

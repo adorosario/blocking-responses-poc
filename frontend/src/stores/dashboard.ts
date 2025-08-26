@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { devtools, subscribeWithSelector } from 'zustand/middleware'
-import { DashboardState, TestSuite, LiveStreamData, MetricsSummary, AuditEvent, ComplianceType } from '@/types'
+import { DashboardState, TestSuite, LiveStreamData, MetricsSummary, AuditEvent, ComplianceType, HistoricalMetricPoint } from '@/types'
 import { storage } from '@/utils'
 
 interface DashboardStore extends DashboardState {
@@ -14,6 +14,9 @@ interface DashboardStore extends DashboardState {
   addTestSuite: (suite: TestSuite) => void
   updateTestSuite: (id: string, updates: Partial<TestSuite>) => void
   clearTestResults: () => void
+  setTestOutput: (output: string) => void
+  appendTestOutput: (output: string) => void
+  clearTestOutput: () => void
   
   // Live stream actions
   setLiveStream: (stream: LiveStreamData | null) => void
@@ -21,9 +24,12 @@ interface DashboardStore extends DashboardState {
   
   // Metrics actions
   updateMetrics: (metrics: Partial<MetricsSummary>) => void
+  addHistoricalMetric: (metric: HistoricalMetricPoint) => void
+  clearHistoricalMetrics: () => void
   
   // Audit actions
   addAuditEvents: (events: AuditEvent[]) => void
+  setAuditEvents: (events: AuditEvent[]) => void
   clearAuditEvents: () => void
   
   // Utility actions
@@ -41,6 +47,9 @@ const initialState: DashboardState = {
     blocked_requests: 0,
     block_rate: 0,
     avg_risk_score: 0,
+    max_risk_score: 0,
+    input_windows_analyzed: 0,
+    response_windows_analyzed: 0,
     pattern_detections: {},
     presidio_detections: {},
     performance_metrics: {
@@ -50,9 +59,11 @@ const initialState: DashboardState = {
       error_rate: 0,
     },
   },
+  historicalMetrics: [],
   auditEvents: [],
   isConnected: false,
   lastUpdate: new Date().toISOString(),
+  testOutput: '',
 }
 
 export const useDashboardStore = create<DashboardStore>()(
@@ -71,7 +82,7 @@ export const useDashboardStore = create<DashboardStore>()(
       setSelectedComplianceType: (type) => 
         set({ selectedComplianceType: type }, false, 'setSelectedComplianceType'),
       
-      setIsConnected: (connected) => 
+      setIsConnected: (connected) =>
         set({ isConnected: connected }, false, 'setIsConnected'),
       
       // Test suite actions
@@ -98,6 +109,22 @@ export const useDashboardStore = create<DashboardStore>()(
       clearTestResults: () =>
         set({ testSuiteResults: [] }, false, 'clearTestResults'),
       
+      // Test output actions
+      setTestOutput: (output) =>
+        set({ testOutput: output }, false, 'setTestOutput'),
+      
+      appendTestOutput: (output) =>
+        set(
+          (state) => ({
+            testOutput: state.testOutput + output,
+          }),
+          false,
+          'appendTestOutput'
+        ),
+      
+      clearTestOutput: () =>
+        set({ testOutput: '' }, false, 'clearTestOutput'),
+      
       // Live stream actions
       setLiveStream: (stream) =>
         set({ liveStream: stream }, false, 'setLiveStream'),
@@ -122,16 +149,41 @@ export const useDashboardStore = create<DashboardStore>()(
           false,
           'updateMetrics'
         ),
+
+      addHistoricalMetric: (metric) =>
+        set(
+          (state) => {
+            const newHistoricalMetrics = [metric, ...state.historicalMetrics]
+            // Keep more data points for better chart visualization (about 30 minutes at 10-second intervals)
+            return {
+              historicalMetrics: newHistoricalMetrics.slice(0, 180)
+            }
+          },
+          false,
+          'addHistoricalMetric'
+        ),
+
+      clearHistoricalMetrics: () =>
+        set({ historicalMetrics: [] }, false, 'clearHistoricalMetrics'),
       
       // Audit actions
       addAuditEvents: (events) =>
         set(
-          (state) => ({
-            auditEvents: [...events, ...state.auditEvents].slice(0, 1000), // Keep last 1000 events
-          }),
+          (state) => {
+            // Deduplicate events by ID to prevent duplicates
+            const existingIds = new Set(state.auditEvents.map(e => e.id))
+            const newEvents = events.filter(e => !existingIds.has(e.id))
+            
+            return {
+              auditEvents: [...newEvents, ...state.auditEvents].slice(0, 1000), // Keep last 1000 events
+            }
+          },
           false,
           'addAuditEvents'
         ),
+      
+      setAuditEvents: (events) =>
+        set({ auditEvents: events.slice(0, 1000) }, false, 'setAuditEvents'),
       
       clearAuditEvents: () =>
         set({ auditEvents: [] }, false, 'clearAuditEvents'),

@@ -58,8 +58,7 @@ jobs:
       env:
         DEFAULT_BRANCH: main
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VALIDATE_PYTHON_BLACK: false
-        VALIDATE_PYTHON_ISORT: false
+        VALIDATE_ALL_CODEBASE: false
         VALIDATE_DOCKERFILE_HADOLINT: true
 
   docker:

@@ -58,7 +58,7 @@ const ComplianceBreakdown: React.FC = () => {
 
   if (pieData.length === 0) {
     return (
-      <div className="h-80 flex items-center justify-center text-gray-500 dark:text-gray-400">
+      <div className="h-60 sm:h-80 flex items-center justify-center text-gray-500 dark:text-gray-400">
         <div className="text-center">
           <div className="text-2xl mb-2">📊</div>
           <p>No compliance data available yet</p>
@@ -69,21 +69,21 @@ const ComplianceBreakdown: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Compliance Types Pie Chart */}
       <div>
-        <h4 className="font-medium text-gray-900 dark:text-white mb-4">
+        <h4 className="font-medium text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">
           By Compliance Type
         </h4>
-        <div className="h-64">
+        <div className="h-48 sm:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={pieData}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={100}
+                innerRadius={40}
+                outerRadius={window.innerWidth < 640 ? 70 : 100}
                 paddingAngle={2}
                 dataKey="value"
               >
@@ -101,14 +101,14 @@ const ComplianceBreakdown: React.FC = () => {
         </div>
         
         {/* Legend */}
-        <div className="flex flex-wrap justify-center gap-4 mt-4">
+        <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-3 sm:mt-4">
           {pieData.map((entry, index) => (
-            <div key={index} className="flex items-center space-x-2">
+            <div key={index} className="flex items-center space-x-1 sm:space-x-2">
               <div 
-                className="w-3 h-3 rounded-full"
+                className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 {entry.name} ({entry.value})
               </span>
             </div>
@@ -119,24 +119,31 @@ const ComplianceBreakdown: React.FC = () => {
       {/* Top Patterns Bar Chart */}
       {barData.length > 0 && (
         <div>
-          <h4 className="font-medium text-gray-900 dark:text-white mb-4">
+          <h4 className="font-medium text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">
             Top Detection Patterns
           </h4>
-          <div className="h-64">
+          <div className="h-48 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
+              <BarChart data={barData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="patternGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.9} />
+                    <stop offset="95%" stopColor="#1d4ed8" stopOpacity={0.7} />
+                  </linearGradient>
+                </defs>
                 <XAxis 
                   dataKey="name" 
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: window.innerWidth < 640 ? 10 : 11 }}
                   stroke="#6b7280"
                   tickLine={false}
                   axisLine={false}
                   angle={-45}
                   textAnchor="end"
                   height={60}
+                  interval={0}
                 />
                 <YAxis 
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
                   stroke="#6b7280"
                   tickLine={false}
                   axisLine={false}
@@ -144,8 +151,11 @@ const ComplianceBreakdown: React.FC = () => {
                 <Tooltip content={<CustomTooltip />} />
                 <Bar 
                   dataKey="count" 
-                  fill="#3b82f6"
+                  fill="url(#patternGradient)"
                   radius={[4, 4, 0, 0]}
+                  stroke="#2563eb"
+                  strokeWidth={1}
+                  minPointSize={5}
                 />
               </BarChart>
             </ResponsiveContainer>

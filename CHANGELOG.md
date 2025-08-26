@@ -5,6 +5,32 @@ All notable changes to the Blocking Responses API project will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-08-25
+
+### Fixed
+- **Chromebook Compatibility** - Resolved port access restrictions
+  - Changed frontend web interface from port 80 to port 3000 for Chromebook browser access
+  - Fixed Grafana monitoring port conflict by moving from 3000 to 3001
+  - Updated all documentation to reflect new port configuration
+  - Added proper SSL port mapping (3443 for future HTTPS support)
+
+- **spaCy Model Configuration** - Fixed Presidio initialization errors
+  - Updated Dockerfile to download `en_core_web_lg` instead of `en_core_web_sm`
+  - Resolved "Can't find model 'en_core_web_lg'" error during container startup
+  - Improved model loading reliability for industrial-grade PII/PHI detection
+
+### Changed
+- **Service URLs**
+  - Web Interface: `http://localhost:80` → `http://localhost:3000`
+  - Grafana Dashboard: `http://localhost:3000` → `http://localhost:3001` (when using monitoring profile)
+  - API remains unchanged: `http://localhost:8000`
+
+### Documentation
+- Updated README.md with new port information and access URLs
+- Updated QUICK_START.md for consistent port references  
+- Updated API_DOCUMENTATION.md with current service endpoints
+- Updated CLAUDE.md development guide with new configuration
+
 ## [1.1.0] - 2025-08-22
 
 ### Added
