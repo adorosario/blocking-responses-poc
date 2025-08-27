@@ -8,6 +8,7 @@ import {
   Activity,
   TrendingUp,
   Clock,
+  MessageSquare,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -212,6 +213,33 @@ const Dashboard: React.FC = () => {
       animate="show"
       className="space-y-3 xs:space-y-4 sm:space-y-5 md:space-y-6"
     >
+      {/* Welcome copy + Primary CTA */}
+      <motion.div variants={itemVariants} className="max-w-5xl mx-auto px-3 sm:px-0">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex-1 text-left space-y-2">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+              Welcome to Compliance AI
+            </h2>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+              Analyze any text for sensitive data, assess risk in real time, and keep your content compliant.
+            </p>
+          </div>
+          <div className="flex-shrink-0 self-center md:self-auto">
+            <Button
+              variant="primary"
+              size="xl"
+              rounded="full"
+              shadow="lg"
+              icon={<MessageSquare className="w-5 h-5" />}
+              onClick={() => navigate('/stream')}
+              className="px-8"
+            >
+              New Request
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Hero Stats - Enhanced with MetricCards */}
       <motion.div
         variants={itemVariants}
