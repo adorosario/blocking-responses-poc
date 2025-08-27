@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card'
 import { Badge, ComplianceBadge, RiskBadge } from './ui/Badge'
 import { Button } from './ui/Button'
 import { useRecentAuditEvents } from '@/stores/dashboard'
-import { formatters, truncateText } from '@/utils'
+import { formatters } from '@/utils'
 import { AuditEvent } from '@/types'
 
 const RecentActivity: React.FC = () => {
@@ -69,8 +69,14 @@ const RecentActivity: React.FC = () => {
             <Badge variant="secondary">
               {recentEvents.length} events
             </Badge>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/audit')}>
-              <Eye className="w-4 h-4 mr-2" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/audit')}
+              icon={<Eye className="w-4 h-4" />} 
+              iconPosition="left"
+              className="self-start sm:self-center border border-gray-600 dark:border-gray-600 rounded-3xl px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+            >
               <span className="hidden sm:inline">View All</span>
               <span className="sm:hidden">All</span>
             </Button>
@@ -111,9 +117,11 @@ const RecentActivity: React.FC = () => {
                     </p>
                     
                     {event.decision_reason && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                        Reason: {truncateText(event.decision_reason, 60)}
-                      </p>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 min-w-0">
+                        {/* Truncate on small screens, full text on sm+ */}
+                        <span className="block sm:hidden truncate">Reason: {event.decision_reason}</span>
+                        <span className="hidden sm:block">Reason: {event.decision_reason}</span>
+                      </div>
                     )}
                     
                     {/* Detected Entities */}

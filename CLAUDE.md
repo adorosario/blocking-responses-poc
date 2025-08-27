@@ -19,12 +19,27 @@ This is a complete FastAPI-based system for implementing "blocking responses" - 
 
 ### Key Files
 
+#### Backend (Python/FastAPI)
 - `app.py`: Main FastAPI application with all endpoints and core logic
 - `test_app.py`: Comprehensive test suite covering all functionality
+- `test_app_basic.py`: Basic test suite for quick validation
 - `example_client.py`: Full-featured client demonstrating API usage
 - `requirements.txt`: Python dependencies including Presidio and spaCy
+
+#### Frontend (React/TypeScript)
+- `frontend/src/App.tsx`: Main React application with routing
+- `frontend/src/components/pages/`: Dashboard, TestSuite, StreamMonitor, AuditLogs pages
+- `frontend/src/stores/dashboard.ts`: Zustand state management
+- `frontend/src/utils/api.ts`: API client utilities
+- `frontend/package.json`: Frontend dependencies (React, TypeScript, Vite)
+- `frontend/vite.config.ts`: Vite configuration with proxy settings
+
+#### Deployment & Configuration
 - `docker-compose.yml`: Multi-service deployment configuration
 - `Makefile`: Comprehensive build and deployment commands
+- `Dockerfile`: API container configuration
+- `frontend/Dockerfile`: Frontend container configuration
+- `.env.example`: Environment configuration template
 
 ### API Endpoints
 
@@ -63,9 +78,15 @@ python -m spacy download en_core_web_lg
 # Copy and configure environment
 cp .env.example .env
 # Edit .env with your OpenAI API key
+
+# Frontend development setup (optional, only if working on UI)
+cd frontend
+npm install
 ```
 
 ### Running the Server
+
+#### Backend Only (API)
 ```bash
 # Development mode
 uvicorn app:app --reload
@@ -74,10 +95,23 @@ uvicorn app:app --reload
 uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
+#### Full Stack (API + Frontend)
+```bash
+# Using Docker Compose (recommended)
+make start  # Basic services (API + Web)
+make dev    # Development mode with logs
+
+# Manual frontend development (if needed)
+cd frontend && npm run dev  # Runs on port 3000 with API proxy
+```
+
 ### Running Tests
 ```bash
-# Run all tests
+# Run all tests (comprehensive)
 pytest test_app.py -v
+
+# Run basic tests only
+pytest test_app_basic.py -v
 
 # Run specific test categories
 pytest test_app.py::TestComplianceDetection -v
@@ -86,6 +120,12 @@ pytest test_app.py::TestAuditLogging -v
 
 # Run with coverage
 pytest test_app.py --cov=app --cov-report=html
+
+# Quick test using make
+make test
+
+# Run tests in Docker container
+docker-compose run --rm api pytest test_app_basic.py -v
 ```
 
 ### Docker Deployment
@@ -108,6 +148,16 @@ make dev
 # API Documentation: http://localhost:8000/docs
 ```
 
+### Frontend Development Commands
+```bash
+# Inside the frontend/ directory
+npm run dev        # Start development server (port 3000)
+npm run build      # Build for production
+npm run lint       # Run ESLint
+npm run type-check # TypeScript type checking
+npm run preview    # Preview production build
+```
+
 ### Example Client
 ```bash
 # Run demos
@@ -120,16 +170,26 @@ python example_client.py interactive
 ## Configuration
 
 ### Environment Variables (.env)
+
+#### Required
 - `OPENAI_API_KEY`: Required for LLM functionality
+
+#### Model Configuration
 - `DEFAULT_MODEL`: Primary LLM model (default: gpt-4o-mini)
 - `JUDGE_MODEL`: Secondary safety judge model (default: gpt-4o-mini)
-- `DELAY_TOKENS`: Buffer size in tokens (default: 24)
+
+#### Security & Compliance
+- `DELAY_TOKENS`: Buffer size in tokens (default: 20)
 - `DELAY_MS`: Maximum flush delay in milliseconds (default: 250)
 - `RISK_THRESHOLD`: Blocking threshold (default: 1.0)
+- `JUDGE_THRESHOLD`: LLM judge activation threshold (default: 0.8)
 - `PRESIDIO_CONFIDENCE_THRESHOLD`: Presidio detection threshold (default: 0.6)
+- `ENABLE_JUDGE`: Enable secondary AI assessment (default: true)
 - `ENABLE_SAFE_REWRITE`: Enable AI-powered safe responses (default: true)
 - `ENABLE_AUDIT_LOGGING`: Enable compliance audit logging (default: true)
 - `HASH_SENSITIVE_DATA`: Hash sensitive data in logs (default: true)
+
+#### System Configuration  
 - `LOG_LEVEL`: Logging verbosity (default: INFO)
 - `CORS_ORIGINS`: Allowed CORS origins (default: *)
 

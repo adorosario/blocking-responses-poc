@@ -380,9 +380,9 @@ export const PercentageMetric: React.FC<Omit<MetricCardProps, 'value'> & {
     {...props}
     value={`${percentage.toFixed(precision)}%`}
     color={
-      percentage >= 80 ? 'green' :
-      percentage >= 60 ? 'yellow' :
-      percentage >= 40 ? 'yellow' : 'red'
+      percentage >= 80 ? 'red' :
+      percentage >= 50 ? 'yellow' :
+      percentage >= 40 ? 'green' : 'green'
     }
   />
 )

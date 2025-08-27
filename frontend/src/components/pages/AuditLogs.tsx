@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { useSearchParams } from 'react-router-dom'
-import { 
-  Search, 
-  Filter, 
-  Download, 
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
+import {
+  Search,
+  Filter,
+  Download,
   Calendar,
   Eye,
   Shield,
@@ -12,287 +12,385 @@ import {
   CheckCircle,
   RefreshCw,
   X,
-} from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge, ComplianceBadge, RiskBadge } from '@/components/ui/Badge'
-import { useNotifications } from '@/components/ui/Notifications'
-import { formatters } from '@/utils'
-import { useConnection } from '@/utils/useConnection'
-import { apiClient } from '@/utils/api'
-import { AuditEvent } from '@/types'
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge, ComplianceBadge, RiskBadge } from "@/components/ui/Badge";
+import { useNotifications } from "@/components/ui/Notifications";
+import { formatters } from "@/utils";
+import { useConnection } from "@/utils/useConnection";
+import { apiClient } from "@/utils/api";
+import { AuditEvent } from "@/types";
 
 const AuditLogs: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedComplianceType, setSelectedComplianceType] = useState('all')
-  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [autoRefresh, setAutoRefresh] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
-  const [showDateModal, setShowDateModal] = useState(false)
-  const [showDetailsModal, setShowDetailsModal] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null)
-  const [dateRange, setDateRange] = useState<{start: string, end: string}>({
-    start: '',
-    end: ''
-  })
-  const [tempDateRange, setTempDateRange] = useState<{start: string, end: string}>({
-    start: '',
-    end: ''
-  })
-  
-  const [searchParams, setSearchParams] = useSearchParams()
-  const isConnected = useConnection()
-  const { success, error: notifyError, info } = useNotifications()
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedComplianceType, setSelectedComplianceType] = useState("all");
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
+    start: "",
+    end: "",
+  });
+  const [tempDateRange, setTempDateRange] = useState<{
+    start: string;
+    end: string;
+  }>({
+    start: "",
+    end: "",
+  });
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isConnected = useConnection();
+  const { success, error: notifyError, info } = useNotifications();
 
   useEffect(() => {
-    loadAuditLogs()
-  }, [isConnected])
+    loadAuditLogs();
+  }, [isConnected]);
 
   // Check for eventId in URL params and auto-open details
   useEffect(() => {
-    const eventId = searchParams.get('eventId')
+    const eventId = searchParams.get("eventId");
     if (eventId && auditEvents.length > 0) {
-      const targetEvent = auditEvents.find(event => event.id === eventId)
+      const targetEvent = auditEvents.find((event) => event.id === eventId);
       if (targetEvent) {
-        setSelectedEvent(targetEvent)
-        setShowDetailsModal(true)
+        setSelectedEvent(targetEvent);
+        setShowDetailsModal(true);
         // Remove the eventId from URL after opening
-        searchParams.delete('eventId')
-        setSearchParams(searchParams)
+        searchParams.delete("eventId");
+        setSearchParams(searchParams);
       }
     }
-  }, [auditEvents, searchParams, setSearchParams])
+  }, [auditEvents, searchParams, setSearchParams]);
 
   // Auto-refresh functionality
   useEffect(() => {
-    if (!autoRefresh || !isConnected) return
-    
+    if (!autoRefresh || !isConnected) return;
+
     const interval = setInterval(() => {
-      loadAuditLogs()
-    }, 10000) // Refresh every 10 seconds
-    
-    return () => clearInterval(interval)
-  }, [autoRefresh, isConnected])
+      loadAuditLogs();
+    }, 10000); // Refresh every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, isConnected]);
 
   const loadAuditLogs = async () => {
-    if (!isConnected) return
-    
-    setLoading(true)
-    setError(null)
-    
+    if (!isConnected) return;
+
+    setLoading(true);
+    setError(null);
+
     try {
       const response = await apiClient.getComplianceAuditLogs({
         limit: 50,
         offset: 0,
-        compliance_type: selectedComplianceType === 'all' ? undefined : selectedComplianceType,
-      })
-      
+        compliance_type:
+          selectedComplianceType === "all" ? undefined : selectedComplianceType,
+      });
+
       if (response.success && response.data) {
         // Map the backend audit log format to frontend AuditEvent format
-        const mappedEvents: AuditEvent[] = (response.data.logs || []).map((event: any) => ({
-          id: event.id.toString(),
-          timestamp: event.timestamp,
-          event_type: event.event_type || 'UNKNOWN',
-          session_id: event.session_id || '',
-          compliance_type: event.compliance_type || 'PII',
-          risk_score: event.risk_score || 0,
-          blocked: event.blocked || false,
-          patterns_detected: event.patterns_detected || [],
-          entities_detected: event.entities_detected || [],
-          decision_reason: event.decision_reason || (event.blocked ? 
-            'Content blocked due to compliance violations' : 
-            'Content processed successfully - no violations detected'),
-          content_hash: event.content_hash,
-          metadata: event.details || {}
-        }))
-        
-        setAuditEvents(mappedEvents)
+        const mappedEvents: AuditEvent[] = (response.data.logs || []).map(
+          (event: any) => ({
+            id: event.id.toString(),
+            timestamp: event.timestamp,
+            event_type: event.event_type || "UNKNOWN",
+            session_id: event.session_id || "",
+            compliance_type: event.compliance_type || "PII",
+            risk_score: event.risk_score || 0,
+            blocked: event.blocked || false,
+            patterns_detected: event.patterns_detected || [],
+            entities_detected: event.entities_detected || [],
+            decision_reason:
+              event.decision_reason ||
+              (event.blocked
+                ? "Content blocked due to compliance violations"
+                : "Content processed successfully - no violations detected"),
+            content_hash: event.content_hash,
+            metadata: event.details || {},
+          })
+        );
+
+        setAuditEvents(mappedEvents);
       } else {
-        setError(response.error || 'Failed to load audit logs')
+        setError(response.error || "Failed to load audit logs");
       }
     } catch (err) {
-      setError('Failed to connect to audit log service')
-      console.error('Error loading audit logs:', err)
+      setError("Failed to connect to audit log service");
+      console.error("Error loading audit logs:", err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const filteredEvents = auditEvents.filter(event => {
-    const searchLower = searchTerm.toLowerCase()
-    
-    // Search across multiple fields (only filter if search term exists)
-    const matchesSearch = !searchTerm || 
-      event.decision_reason.toLowerCase().includes(searchLower) ||
-      event.patterns_detected.some(p => p.toLowerCase().includes(searchLower)) ||
-      event.entities_detected.some(e => {
-        const entityType = typeof e === 'string' ? e : (e?.entity_type || '')
-        return entityType.toLowerCase().includes(searchLower)
-      }) ||
-      event.event_type.toLowerCase().includes(searchLower) ||
-      event.session_id.toLowerCase().includes(searchLower) ||
-      event.compliance_type.toLowerCase().includes(searchLower) ||
-      (event.content_hash && event.content_hash.toLowerCase().includes(searchLower)) ||
-      event.risk_score.toString().includes(searchTerm)
-    
-    const matchesCompliance = selectedComplianceType === 'all' || 
-      event.compliance_type === selectedComplianceType
+  const [searchType, setSearchType] = useState<
+    "all" | "content" | "session" | "status"
+  >("all");
 
-    // Date filtering
-    const matchesDateRange = (() => {
-      if (!dateRange.start || !dateRange.end) return true
-      
-      const eventDate = new Date(event.timestamp)
-      const startDate = new Date(dateRange.start)
-      const endDate = new Date(dateRange.end)
-      
-      // Set end date to end of day for inclusive filtering
-      endDate.setHours(23, 59, 59, 999)
-      
-      return eventDate >= startDate && eventDate <= endDate
-    })()
+  const filteredEvents = auditEvents
+    .filter((event) => {
+      if (!searchTerm) return true; // No search term = show all
 
-    return matchesSearch && matchesCompliance && matchesDateRange
-  })
+      const searchLower = searchTerm.toLowerCase();
+
+      switch (searchType) {
+        case "content":
+          // Search in content-related fields
+          return (
+            event.decision_reason.toLowerCase().includes(searchLower) ||
+            event.patterns_detected.some((p) =>
+              p.toLowerCase().includes(searchLower)
+            ) ||
+            event.entities_detected.some((e) => {
+              const entityType =
+                typeof e === "string" ? e : e?.entity_type || "";
+              return entityType.toLowerCase().includes(searchLower);
+            })
+          );
+
+        case "session":
+          // Search session-related info
+          return (
+            event.session_id.toLowerCase().includes(searchLower) ||
+            event.id.toLowerCase().includes(searchLower)
+          );
+
+        case "status":
+          // Search status-related info
+          return (
+            event.event_type.toLowerCase().includes(searchLower) ||
+            event.compliance_type.toLowerCase().includes(searchLower) ||
+            (event.blocked && "blocked".includes(searchLower)) ||
+            (!event.blocked && "allowed".includes(searchLower))
+          );
+
+        default: // 'all'
+          // Smart search - prioritize important fields
+          return (
+            event.decision_reason.toLowerCase().includes(searchLower) ||
+            event.event_type.toLowerCase().includes(searchLower) ||
+            event.session_id.toLowerCase().includes(searchLower) ||
+            (event.blocked && "blocked".includes(searchLower)) ||
+            (!event.blocked && "allowed".includes(searchLower))
+          );
+      }
+    })
+    .filter((event) => {
+      // Keep existing compliance type filter
+      const matchesCompliance =
+        selectedComplianceType === "all" ||
+        event.compliance_type === selectedComplianceType;
+
+      // Keep existing date range filter
+      const matchesDateRange = (() => {
+        if (!dateRange.start || !dateRange.end) return true;
+
+        const eventDate = new Date(event.timestamp);
+        const startDate = new Date(dateRange.start);
+        const endDate = new Date(dateRange.end);
+
+        // Set end date to end of day for inclusive filtering
+        endDate.setHours(23, 59, 59, 999);
+
+        return eventDate >= startDate && eventDate <= endDate;
+      })();
+
+      return matchesCompliance && matchesDateRange;
+    });
 
   const handleRefresh = () => {
-    loadAuditLogs()
-  }
+    loadAuditLogs();
+  };
 
   const handleComplianceTypeChange = (value: string) => {
-    setSelectedComplianceType(value)
+    setSelectedComplianceType(value);
     // Optionally reload with new filter
-  }
+  };
 
   const handleExportCSV = () => {
     try {
       const headers = [
-        'ID', 'Timestamp', 'Event Type', 'Session ID', 'Compliance Type', 
-        'Risk Score', 'Status', 'Patterns Detected', 'Entities Detected', 
-        'Decision Reason', 'Content Hash'
-      ]
-      
-      const rows = filteredEvents.map(event => [
+        "ID",
+        "Timestamp",
+        "Event Type",
+        "Session ID",
+        "Compliance Type",
+        "Risk Score",
+        "Status",
+        "Patterns Detected",
+        "Entities Detected",
+        "Decision Reason",
+        "Content Hash",
+      ];
+
+      const rows = filteredEvents.map((event) => [
         event.id,
         event.timestamp,
-        event.event_type.replace(/_/g, ' '),
+        event.event_type.replace(/_/g, " "),
         event.session_id,
         event.compliance_type,
         event.risk_score.toFixed(2),
-        event.blocked ? 'BLOCKED' : 'ALLOWED',
-        event.patterns_detected.join('; '),
-        event.entities_detected.map(e => {
-          if (typeof e === 'string') return e
-          const entityType = e?.entity_type || 'Unknown'
-          const score = e?.score ? (e.score * 100).toFixed(0) : '0'
-          return `${entityType} (${score}%)`
-        }).join('; '),
+        event.blocked ? "BLOCKED" : "ALLOWED",
+        event.patterns_detected.join("; "),
+        event.entities_detected
+          .map((e) => {
+            if (typeof e === "string") return e;
+            const entityType = e?.entity_type || "Unknown";
+            const score = e?.score ? (e.score * 100).toFixed(0) : "0";
+            return `${entityType} (${score}%)`;
+          })
+          .join("; "),
         event.decision_reason,
-        event.content_hash || ''
-      ])
-      
+        event.content_hash || "",
+      ]);
+
       const csvContent = [headers, ...rows]
-        .map(row => row.map(field => `"${field}"`).join(','))
-        .join('\n')
-      
-      const blob = new Blob([csvContent], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      
-      success('Export Complete', `Exported ${filteredEvents.length} audit events to CSV`)
+        .map((row) => row.map((field) => `"${field}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `audit-logs-${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      success(
+        "Export Complete",
+        `Exported ${filteredEvents.length} audit events to CSV`
+      );
     } catch (err) {
-      notifyError('Export Failed', 'Failed to export audit logs')
+      notifyError("Export Failed", "Failed to export audit logs");
     }
-  }
+  };
 
   const handleDateRange = () => {
-    setShowDateModal(true)
-  }
+    setShowDateModal(true);
+  };
 
   const applyDateRange = () => {
-    setDateRange(tempDateRange)
-    setShowDateModal(false)
-    info('Date Range Applied', `Filtering events from ${tempDateRange.start} to ${tempDateRange.end}`)
-    loadAuditLogs()
-  }
+    setDateRange(tempDateRange);
+    setShowDateModal(false);
+    info(
+      "Date Range Applied",
+      `Filtering events from ${tempDateRange.start} to ${tempDateRange.end}`
+    );
+    loadAuditLogs();
+  };
 
   const clearDateRange = () => {
-    setDateRange({ start: '', end: '' })
-    setTempDateRange({ start: '', end: '' })
-    info('Date Filter Cleared', 'Showing all events')
-  }
+    setDateRange({ start: "", end: "" });
+    setTempDateRange({ start: "", end: "" });
+    info("Date Filter Cleared", "Showing all events");
+  };
 
   const handleViewDetails = (event: AuditEvent) => {
-    setSelectedEvent(event)
-    setShowDetailsModal(true)
-  }
+    setSelectedEvent(event);
+    setShowDetailsModal(true);
+  };
 
   const handleLoadMore = async () => {
-    if (!isConnected || loading) return
-    
-    setLoading(true)
+    if (!isConnected || loading) return;
+
+    setLoading(true);
     try {
-      const newOffset = auditEvents.length
+      const newOffset = auditEvents.length;
       const response = await apiClient.getComplianceAuditLogs({
         limit: 50,
         offset: newOffset,
-        compliance_type: selectedComplianceType === 'all' ? undefined : selectedComplianceType,
-      })
-      
+        compliance_type:
+          selectedComplianceType === "all" ? undefined : selectedComplianceType,
+      });
+
       if (response.success && response.data) {
-        const newEvents: AuditEvent[] = (response.data.logs || []).map((event: any) => ({
-          id: event.id.toString(),
-          timestamp: event.timestamp,
-          event_type: event.event_type || 'UNKNOWN',
-          session_id: event.session_id || '',
-          compliance_type: event.compliance_type || 'PII',
-          risk_score: event.risk_score || 0,
-          blocked: event.blocked || false,
-          patterns_detected: event.patterns_detected || [],
-          entities_detected: event.entities_detected || [],
-          decision_reason: event.decision_reason || (event.blocked ? 
-            'Content blocked due to compliance violations' : 
-            'Content processed successfully - no violations detected'),
-          content_hash: event.content_hash,
-          metadata: event.details || {}
-        }))
-        
-        setAuditEvents(prev => [...prev, ...newEvents])
-        setHasMore((response.data.logs?.length || 0) >= 50) // More available if we got a full page
-        
+        const newEvents: AuditEvent[] = (response.data.logs || []).map(
+          (event: any) => ({
+            id: event.id.toString(),
+            timestamp: event.timestamp,
+            event_type: event.event_type || "UNKNOWN",
+            session_id: event.session_id || "",
+            compliance_type: event.compliance_type || "PII",
+            risk_score: event.risk_score || 0,
+            blocked: event.blocked || false,
+            patterns_detected: event.patterns_detected || [],
+            entities_detected: event.entities_detected || [],
+            decision_reason:
+              event.decision_reason ||
+              (event.blocked
+                ? "Content blocked due to compliance violations"
+                : "Content processed successfully - no violations detected"),
+            content_hash: event.content_hash,
+            metadata: event.details || {},
+          })
+        );
+
+        setAuditEvents((prev) => [...prev, ...newEvents]);
+        setHasMore((response.data.logs?.length || 0) >= 50); // More available if we got a full page
+
         if (newEvents.length > 0) {
-          success('Loaded More Events', `Loaded ${newEvents.length} additional audit events`)
+          success(
+            "Loaded More Events",
+            `Loaded ${newEvents.length} additional audit events`
+          );
         } else {
-          info('No More Events', 'All available audit events have been loaded')
+          info("No More Events", "All available audit events have been loaded");
         }
       }
     } catch (err) {
-      notifyError('Load Error', 'Failed to load more audit events')
+      notifyError("Load Error", "Failed to load more audit events");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const getEventIcon = (event: any) => {
     if (event.blocked) {
-      return <Shield className="w-5 h-5 text-danger-600" />
+      return <Shield className="w-5 h-5 text-danger-600" />;
     } else if (event.risk_score > 0.7) {
-      return <AlertTriangle className="w-5 h-5 text-warning-600" />
+      return <AlertTriangle className="w-5 h-5 text-warning-600" />;
     } else {
-      return <CheckCircle className="w-5 h-5 text-success-600" />
+      return <CheckCircle className="w-5 h-5 text-success-600" />;
     }
-  }
+  };
+
+  const getSearchPlaceholder = (type: string) => {
+    switch (type) {
+      case "content":
+        return "Search violations, entities, patterns...";
+      case "session":
+        return "Search by session ID or event ID...";
+      case "status":
+        return "Search by status: blocked, allowed, HIPAA...";
+      default:
+        return "Search audit events...";
+    }
+  };
+
+  const getSearchHint = (type: string) => {
+    switch (type) {
+      case "content":
+        return '💡 Try: "email", "phone number", "credit card", "blocked content"';
+      case "session":
+        return "💡 Try: session IDs or event IDs";
+      case "status":
+        return '💡 Try: "blocked", "allowed", "HIPAA", "PCI", "high risk"';
+      default:
+        return '💡 Try: "blocked", "email detected", session IDs, or compliance types';
+    }
+  };
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -303,63 +401,69 @@ const AuditLogs: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Audit Logs
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
+          <p className="text-gray-600 dark:text-gray-400 mt-2 mb-4">
             Comprehensive compliance audit trail and event history
           </p>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-2 sm:space-x-3">
-          <Button 
-            variant="outline" 
-            size="sm" 
+
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 w-full justify-end items-end content-end sm:justify-end sm:items-end sm:content-end">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleRefresh}
             disabled={loading}
-            className="flex-shrink-0"
+            loading={loading}
+            icon={<RefreshCw className="w-4 h-4" />}
+            iconPosition="left"
+            className="w-full sm:w-auto"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Refresh</span>
+            Refresh
           </Button>
-          <Button 
+
+          <Button
             variant={autoRefresh ? "primary" : "outline"}
             size="sm"
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className="flex-shrink-0"
+            icon={<span className="text-sm">{autoRefresh ? "⏸️" : "🔄"}</span>}
+            iconPosition="left"
+            className="w-full sm:w-auto"
           >
-            <span className="hidden sm:inline">
-              {autoRefresh ? '⏸️ Stop Auto' : '🔄 Auto Refresh'}
-            </span>
-            <span className="sm:hidden">
-              {autoRefresh ? '⏸️' : '🔄'}
-            </span>
+            {autoRefresh ? "Stop Auto" : "Auto Refresh"}
           </Button>
-          <Button 
-            variant="outline" 
+
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleExportCSV}
             disabled={loading || filteredEvents.length === 0}
-            className="flex-shrink-0"
+            icon={<Download className="w-4 h-4" />}
+            iconPosition="left"
+            className="w-full sm:w-auto"
           >
-            <Download className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Export CSV</span>
+            Export as CSV
           </Button>
-          <Button 
-            variant="outline" 
+
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleDateRange}
-            className="flex-shrink-0"
+            icon={<Calendar className="w-4 h-4" />}
+            iconPosition="left"
+            className="w-full sm:w-auto"
           >
-            <Calendar className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Date Range</span>
+            Filter by Date
           </Button>
+
           {(dateRange.start || dateRange.end) && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={clearDateRange}
-              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex-shrink-0"
+              icon={<X className="w-4 h-4" />}
+              iconPosition="left"
+              className="w-full sm:w-auto text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border-red-300 hover:border-red-400"
             >
-              <X className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Clear Filter</span>
+              Clear Filter
             </Button>
           )}
         </div>
@@ -377,9 +481,9 @@ const AuditLogs: React.FC = () => {
             <span className="text-red-800 dark:text-red-200 font-medium">
               {error}
             </span>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleRefresh}
               className="ml-auto"
             >
@@ -399,7 +503,8 @@ const AuditLogs: React.FC = () => {
           <div className="flex items-center space-x-3">
             <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
             <span className="text-amber-800 dark:text-amber-200 font-medium">
-              Connection to backend API is unavailable. Some features may be limited.
+              Connection to backend API is unavailable. Some features may be
+              limited.
             </span>
           </div>
         </motion.div>
@@ -416,29 +521,44 @@ const AuditLogs: React.FC = () => {
             <div className="flex flex-col lg:flex-row lg:items-center gap-4">
               {/* Search */}
               <div className="flex-1 min-w-0">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search by event type, session ID, patterns, entities..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-                  />
-                  {searchTerm && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  {/* Search Type Selector */}
+                  <select
+                    value={searchType}
+                    onChange={(e) => setSearchType(e.target.value as any)}
+                    className="sm:w-32 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-sm"
+                  >
+                    <option value="all">All Fields</option>
+                    <option value="content">Content</option>
+                    <option value="session">Sessions</option>
+                    <option value="status">Status</option>
+                  </select>
+
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder={getSearchPlaceholder(searchType)}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                    />
+                    {searchTerm && (
                       <button
-                        onClick={() => setSearchTerm('')}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        onClick={() => setSearchTerm("")}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                       >
                         ✕
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
+
+                {/* User-friendly search hints */}
                 {searchTerm && (
-                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                    💡 Try searching for: "blocked", "PERSON", "email", "high risk", session IDs, or compliance types
+                  <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    {getSearchHint(searchType)}
                   </div>
                 )}
               </div>
@@ -464,7 +584,7 @@ const AuditLogs: React.FC = () => {
 
                 {/* Results Count */}
                 <div className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
-                  {loading ? 'Loading...' : `${filteredEvents.length} events`}
+                  {loading ? "Loading..." : `${filteredEvents.length} events`}
                   {(dateRange.start || dateRange.end) && (
                     <span className="ml-2 text-blue-600 dark:text-blue-400 hidden lg:inline">
                       • Date filtered: {dateRange.start} to {dateRange.end}
@@ -482,7 +602,7 @@ const AuditLogs: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="space-y-4"
+        className="space-y-6 mt-6"
       >
         {loading ? (
           <Card>
@@ -515,11 +635,11 @@ const AuditLogs: React.FC = () => {
                         <div className="flex flex-wrap items-center gap-2">
                           <ComplianceBadge type={event.compliance_type} />
                           <RiskBadge score={event.risk_score} />
-                          <Badge 
+                          <Badge
                             variant={event.blocked ? "danger" : "success"}
                             size="sm"
                           >
-                            {event.blocked ? 'BLOCKED' : 'ALLOWED'}
+                            {event.blocked ? "BLOCKED" : "ALLOWED"}
                           </Badge>
                         </div>
                         <span className="text-sm text-gray-500 dark:text-gray-400 sm:flex-shrink-0">
@@ -528,7 +648,7 @@ const AuditLogs: React.FC = () => {
                       </div>
 
                       <h3 className="font-medium text-gray-900 dark:text-white mb-2 text-sm sm:text-base">
-                        {event.event_type.replace(/_/g, ' ')} 
+                        {event.event_type.replace(/_/g, " ")}
                         <span className="text-gray-500 dark:text-gray-400 font-normal ml-2 block sm:inline">
                           (Session: {event.session_id})
                         </span>
@@ -542,13 +662,19 @@ const AuditLogs: React.FC = () => {
                       {event.entities_detected.length > 0 && (
                         <div className="mb-3">
                           <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                            DETECTED ENTITIES
+                            Detected Entities
                           </h4>
                           <div className="flex flex-wrap gap-1 sm:gap-2">
                             {event.entities_detected.map((entity, idx) => {
-                              const entityName = typeof entity === 'string' ? entity : (entity?.entity_type || 'Unknown')
-                              const confidence = typeof entity === 'object' && entity?.score ? (entity.score * 100).toFixed(0) : '0'
-                              
+                              const entityName =
+                                typeof entity === "string"
+                                  ? entity
+                                  : entity?.entity_type || "Unknown";
+                              const confidence =
+                                typeof entity === "object" && entity?.score
+                                  ? (entity.score * 100).toFixed(0)
+                                  : "0";
+
                               return (
                                 <span
                                   key={idx}
@@ -559,7 +685,7 @@ const AuditLogs: React.FC = () => {
                                     {confidence}%
                                   </span>
                                 </span>
-                              )
+                              );
                             })}
                           </div>
                         </div>
@@ -569,7 +695,7 @@ const AuditLogs: React.FC = () => {
                       {event.patterns_detected.length > 0 && (
                         <div className="mb-3">
                           <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                            TRIGGERED PATTERNS
+                            Patterns Detected
                           </h4>
                           <div className="flex flex-wrap gap-1 sm:gap-2">
                             {event.patterns_detected.map((pattern) => (
@@ -577,7 +703,7 @@ const AuditLogs: React.FC = () => {
                                 key={pattern}
                                 className="inline-flex items-center px-2 py-1 rounded text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400"
                               >
-                                {pattern.replace(/_/g, ' ')}
+                                {pattern.replace(/_/g, " ")}
                               </span>
                             ))}
                           </div>
@@ -589,18 +715,27 @@ const AuditLogs: React.FC = () => {
                         <div className="flex flex-wrap items-center gap-3">
                           <span>Risk Score: {event.risk_score.toFixed(2)}</span>
                           {event.content_hash && (
-                            <span className="hidden sm:inline">Hash: {event.content_hash}</span>
+                            <span className="hidden sm:inline">
+                              Hash: {event.content_hash}
+                            </span>
                           )}
                         </div>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => handleViewDetails(event)}
-                          className="self-start sm:self-center"
+                          className="self-start sm:self-center border border-gray-600 dark:border-gray-600 rounded-3xl px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                         >
-                          <Eye className="w-3 h-3 mr-1" />
+                          {/* <Eye className="w-3 h-3 mr-1" />
                           <span className="hidden sm:inline">View Details</span>
-                          <span className="sm:hidden">Details</span>
+                          <span className="sm:hidden">Details</span> */}
+                          <span className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            <span className="hidden sm:inline ml-1">
+                              View Details
+                            </span>
+                            <span className="sm:hidden ml-1">Details</span>
+                          </span>
                         </Button>
                       </div>
                     </div>
@@ -616,10 +751,9 @@ const AuditLogs: React.FC = () => {
                 <div className="text-4xl mb-4">🔍</div>
                 <p className="font-medium mb-2">No audit events found</p>
                 <p className="text-sm">
-                  {searchTerm || selectedComplianceType !== 'all' 
-                    ? 'Try adjusting your search filters'
-                    : 'Audit events will appear here as the system processes requests'
-                  }
+                  {searchTerm || selectedComplianceType !== "all"
+                    ? "Try adjusting your search filters"
+                    : "Audit events will appear here as the system processes requests"}
                 </p>
               </div>
             </CardContent>
@@ -633,12 +767,9 @@ const AuditLogs: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-center"
+          className="text-center mt-4"
         >
-          <Button 
-            variant="outline"
-            onClick={handleLoadMore}
-          >
+          <Button variant="outline" onClick={handleLoadMore} className=" mb-4">
             Load More Events
           </Button>
         </motion.div>
@@ -663,7 +794,12 @@ const AuditLogs: React.FC = () => {
                 <input
                   type="date"
                   value={tempDateRange.start}
-                  onChange={(e) => setTempDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  onChange={(e) =>
+                    setTempDateRange((prev) => ({
+                      ...prev,
+                      start: e.target.value,
+                    }))
+                  }
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -674,7 +810,12 @@ const AuditLogs: React.FC = () => {
                 <input
                   type="date"
                   value={tempDateRange.end}
-                  onChange={(e) => setTempDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  onChange={(e) =>
+                    setTempDateRange((prev) => ({
+                      ...prev,
+                      end: e.target.value,
+                    }))
+                  }
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -709,41 +850,69 @@ const AuditLogs: React.FC = () => {
           >
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Event Details</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Event Details
+                </h3>
                 <button
                   onClick={() => setShowDetailsModal(false)}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
             </div>
-            
+
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Basic Information */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base sm:text-lg">Basic Information</CardTitle>
+                    <CardTitle className="text-base sm:text-lg">
+                      Basic Information
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Event ID</label>
-                        <p className="mt-1 text-sm text-gray-900 dark:text-gray-100 font-mono break-all">{selectedEvent.id}</p>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Event ID
+                        </label>
+                        <p className="mt-1 text-sm text-gray-900 dark:text-gray-100 font-mono break-all">
+                          {selectedEvent.id}
+                        </p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Session ID</label>
-                        <p className="mt-1 text-sm text-gray-900 dark:text-gray-100 font-mono break-all">{selectedEvent.session_id}</p>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Session ID
+                        </label>
+                        <p className="mt-1 text-sm text-gray-900 dark:text-gray-100 font-mono break-all">
+                          {selectedEvent.session_id}
+                        </p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Event Type</label>
-                        <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{selectedEvent.event_type}</p>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Event Type
+                        </label>
+                        <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                          {selectedEvent.event_type}
+                        </p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Timestamp</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Timestamp
+                        </label>
                         <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
                           {new Date(selectedEvent.timestamp).toLocaleString()}
                         </p>
@@ -755,34 +924,50 @@ const AuditLogs: React.FC = () => {
                 {/* Compliance & Risk */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base sm:text-lg">Compliance & Risk</CardTitle>
+                    <CardTitle className="text-base sm:text-lg">
+                      Compliance & Risk
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Compliance Type</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Compliance Type
+                        </label>
                         <div className="mt-1">
-                          <ComplianceBadge type={selectedEvent.compliance_type} />
+                          <ComplianceBadge
+                            type={selectedEvent.compliance_type}
+                          />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Risk Score</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Risk Score
+                        </label>
                         <div className="mt-1">
                           <RiskBadge score={selectedEvent.risk_score} />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Blocked</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Blocked
+                        </label>
                         <div className="mt-1">
-                          <Badge variant={selectedEvent.blocked ? 'danger' : 'success'}>
-                            {selectedEvent.blocked ? 'Yes' : 'No'}
+                          <Badge
+                            variant={
+                              selectedEvent.blocked ? "danger" : "success"
+                            }
+                          >
+                            {selectedEvent.blocked ? "Yes" : "No"}
                           </Badge>
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Content Hash</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Content Hash
+                        </label>
                         <p className="mt-1 text-sm text-gray-900 dark:text-gray-100 font-mono break-all">
-                          {selectedEvent.content_hash || 'N/A'}
+                          {selectedEvent.content_hash || "N/A"}
                         </p>
                       </div>
                     </div>
@@ -793,10 +978,14 @@ const AuditLogs: React.FC = () => {
               {/* Decision Reason */}
               <Card className="mt-4 sm:mt-6">
                 <CardHeader>
-                  <CardTitle className="text-base sm:text-lg">Decision Reason</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">
+                    Decision Reason
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-900 dark:text-gray-100">{selectedEvent.decision_reason}</p>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {selectedEvent.decision_reason}
+                  </p>
                 </CardContent>
               </Card>
 
@@ -804,16 +993,27 @@ const AuditLogs: React.FC = () => {
               {selectedEvent.entities_detected.length > 0 && (
                 <Card className="mt-4 sm:mt-6">
                   <CardHeader>
-                    <CardTitle className="text-base sm:text-lg">Entities Detected</CardTitle>
+                    <CardTitle className="text-base sm:text-lg">
+                      Entities Detected
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {selectedEvent.entities_detected.map((entity, index) => {
-                        const entityName = typeof entity === 'string' ? entity : (entity?.entity_type || 'Unknown Entity')
-                        const confidence = typeof entity === 'object' && entity?.score ? (entity.score * 100).toFixed(1) : '0.0'
-                        
+                        const entityName =
+                          typeof entity === "string"
+                            ? entity
+                            : entity?.entity_type || "Unknown Entity";
+                        const confidence =
+                          typeof entity === "object" && entity?.score
+                            ? (entity.score * 100).toFixed(1)
+                            : "0.0";
+
                         return (
-                          <div key={index} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg gap-2">
+                          <div
+                            key={index}
+                            className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg gap-2"
+                          >
                             <span className="font-medium text-gray-900 dark:text-gray-100">
                               {entityName}
                             </span>
@@ -821,7 +1021,7 @@ const AuditLogs: React.FC = () => {
                               {confidence}% confidence
                             </Badge>
                           </div>
-                        )
+                        );
                       })}
                     </div>
                   </CardContent>
@@ -850,7 +1050,7 @@ const AuditLogs: React.FC = () => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default AuditLogs
+export default AuditLogs;

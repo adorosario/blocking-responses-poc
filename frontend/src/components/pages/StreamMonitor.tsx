@@ -19,7 +19,9 @@ import {
   ChevronUp,
   Activity,
   Zap,
-  Target
+  Target,
+  Maximize2,
+  X
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge, RiskBadge } from '@/components/ui/Badge'
@@ -91,7 +93,7 @@ interface AnalysisConfig {
 const StreamMonitor: React.FC = () => {
   // Global metrics from dashboard store
   const { realtimeMetrics, updateMetrics } = useDashboardStore()
-  
+
   // Chat state
   const [messages, setMessages] = useState<Message[]>([])
   const [currentMessage, setCurrentMessage] = useState('Please write me an essay in 500 words about diabetes. What should I do if I am at risk for diabetes.')
@@ -99,7 +101,7 @@ const StreamMonitor: React.FC = () => {
   const [currentResponse, setCurrentResponse] = useState('')
   const [currentMessageId, setCurrentMessageId] = useState<string | null>(null)
   
-  
+
   // Analysis state
   const [tokens, setTokens] = useState<StreamToken[]>([])
   const [events, setEvents] = useState<StreamEvent[]>([])
@@ -107,7 +109,7 @@ const StreamMonitor: React.FC = () => {
   const [inputWindowAnalyses, setInputWindowAnalyses] = useState<WindowAnalysis[]>([])
   const [responseWindows, setResponseWindows] = useState<WindowAnalysis[]>([])
   const [currentRiskScore, setCurrentRiskScore] = useState<number>(0)
-  
+
   // Config state
   const [analysisConfig, setAnalysisConfig] = useState<AnalysisConfig>({
     analysis_window_size: 150,
@@ -117,15 +119,17 @@ const StreamMonitor: React.FC = () => {
     delay_tokens: 24,
     delay_ms: 250
   })
-  
+
   // UI State
   const [showComplianceInfo, setShowComplianceInfo] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showDebugPanel, setShowDebugPanel] = useState(false)
+  const [showDecisionTimelineModal, setShowDecisionTimelineModal] = useState(false)
+  const [showResponseStreamModal, setShowResponseStreamModal] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'analyzing' | 'streaming' | 'complete'>('idle')
   const [expandedMessage, setExpandedMessage] = useState<string | null>(null)
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
-  
+
   // Temporary config state for editing
   const [tempConfig, setTempConfig] = useState({
     analysis_window_size: '150',
@@ -147,7 +151,7 @@ const StreamMonitor: React.FC = () => {
   // Auto-scroll for messages
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
-  
+
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
@@ -240,13 +244,13 @@ const StreamMonitor: React.FC = () => {
     setProcessingStatus('analyzing')
     
     let accumulatedContent = ''
-    
+
     try {
       // Create new AbortController for this request
       abortControllerRef.current = new AbortController()
-      
+
       const apiKey = localStorage.getItem('openai_api_key')
-      
+
       const response = await fetch('http://localhost:8000/chat/stream', {
         method: 'POST',
         headers: {
@@ -291,7 +295,7 @@ const StreamMonitor: React.FC = () => {
               setProcessingStatus('complete')
               continue
             }
-            
+
             try {
               const data = JSON.parse(dataContent)
               console.log('SSE Event received:', data.type, data)
@@ -305,10 +309,10 @@ const StreamMonitor: React.FC = () => {
                 
                 const timestamp = new Date().toLocaleTimeString() + '.' + Date.now().toString().slice(-3)
                 setTokens(prev => [...prev, {
-                  text: data.content,
-                  risk: 0.0,
-                  timestamp,
-                  entities: [],
+                    text: data.content,
+                    risk: 0.0,
+                    timestamp,
+                    entities: [],
                   patterns: []
                 }])
                 
@@ -316,12 +320,12 @@ const StreamMonitor: React.FC = () => {
                   msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
                 ))
               }
-              
+
               // Handle input window analysis events
               if (data.type === 'input_window') {
                 const timestamp = new Date().toLocaleTimeString() + '.' + Date.now().toString().slice(-3)
                 const analysisData = JSON.parse(data.content)
-                
+
                 const windowAnalysis: WindowAnalysis = {
                   ...analysisData,
                   timestamp
@@ -331,21 +335,21 @@ const StreamMonitor: React.FC = () => {
                 setCurrentRiskScore(analysisData.total_score)
                 
                 setEvents(prev => [...prev, {
-                  id: prev.length + 1,
+                    id: prev.length + 1,
                   type: 'input_window_analysis',
-                  timestamp,
+                    timestamp,
                   description: `Analyzed input window ${prev.filter(e => e.type === 'input_window_analysis').length + 1} (tokens ${analysisData.window_start}-${analysisData.window_end}): Risk ${analysisData.total_score.toFixed(3)}`,
-                  risk: analysisData.total_score,
+                    risk: analysisData.total_score,
                   entities: analysisData.presidio_entities?.map((e: any) => e.entity_type),
                   patterns: analysisData.triggered_rules
                 }])
               }
-              
-              // Handle response window analysis events  
+
+              // Handle response window analysis events
               if (data.type === 'response_window') {
                 const timestamp = new Date().toLocaleTimeString() + '.' + Date.now().toString().slice(-3)
                 const analysisData = JSON.parse(data.content)
-                
+
                 const windowAnalysis: WindowAnalysis = {
                   ...analysisData,
                   timestamp
@@ -355,11 +359,11 @@ const StreamMonitor: React.FC = () => {
                 setCurrentRiskScore(Math.max(currentRiskScore, analysisData.total_score))
                 
                 setEvents(prev => [...prev, {
-                  id: prev.length + 1,
+                    id: prev.length + 1,
                   type: 'response_window_analysis',
-                  timestamp,
+                    timestamp,
                   description: `Analyzed response window ${analysisData.window_number} (tokens ${analysisData.window_start}-${analysisData.window_end}): Risk ${analysisData.total_score.toFixed(3)}`,
-                  risk: analysisData.total_score,
+                    risk: analysisData.total_score,
                   entities: analysisData.presidio_entities?.map((e: any) => e.entity_type),
                   patterns: analysisData.triggered_rules
                 }])
@@ -368,12 +372,12 @@ const StreamMonitor: React.FC = () => {
               if (data.type === 'risk_alert') {
                 const timestamp = new Date().toLocaleTimeString() + '.' + Date.now().toString().slice(-3)
                 setEvents(prev => [...prev, {
-                  id: prev.length + 1,
+                    id: prev.length + 1,
                   type: 'risk_alert',
-                  timestamp,
-                  description: `⚠️ HIGH RISK DETECTED: ${data.content}`,
-                  risk: data.risk_score,
-                  entities: data.entities || [],
+                    timestamp,
+                    description: `⚠️ HIGH RISK DETECTED: ${data.content}`,
+                    risk: data.risk_score,
+                    entities: data.entities || [],
                   patterns: data.patterns || []
                 }])
               }
@@ -383,21 +387,21 @@ const StreamMonitor: React.FC = () => {
                 const timestamp = new Date().toLocaleTimeString() + '.' + Date.now().toString().slice(-3)
                 const blockReason = data.content || data.reason || 'Content violated compliance policies'
                 setEvents(prev => [...prev, {
-                  id: prev.length + 1,
+                    id: prev.length + 1,
                   type: 'blocked',
-                  timestamp,
-                  description: `🚫 STREAM BLOCKED: ${blockReason}`,
+                    timestamp,
+                    description: `🚫 STREAM BLOCKED: ${blockReason}`,
                   risk: data.risk_score
                 }])
-                
+
                 // Update the message to show it was blocked
                 setMessages(prev => prev.map(msg => 
                   msg.id === messageId ? {
-                    ...msg,
+                          ...msg,
                     content: '⚠️ This response was blocked due to compliance violations.',
-                    streaming: false,
-                    blocked: true,
-                    blockReason: blockReason,
+                          streaming: false,
+                          blocked: true,
+                          blockReason: blockReason,
                     riskScore: data.risk_score
                   } : msg
                 ))
@@ -412,19 +416,19 @@ const StreamMonitor: React.FC = () => {
                 const timestamp = new Date().toLocaleTimeString() + '.' + Date.now().toString().slice(-3)
                 
                 setEvents(prev => [...prev, {
-                  id: prev.length + 1,
+                    id: prev.length + 1,
                   type: 'completed',
-                  timestamp,
+                    timestamp,
                   description: '✅ Stream completed successfully'
                 }])
-                
+
                 // Finalize the message - just stop streaming
                 setMessages(prev => prev.map(msg => 
                   msg.id === messageId ? {
-                    ...msg,
-                    streaming: false,
-                    inputAnalysis: inputWindowAnalyses,
-                    responseWindows: responseWindows,
+                          ...msg,
+                          streaming: false,
+                          inputAnalysis: inputWindowAnalyses,
+                          responseWindows: responseWindows,
                     riskScore: Math.max(...riskScores, 0)
                   } : msg
                 ))
@@ -446,10 +450,10 @@ const StreamMonitor: React.FC = () => {
       if (err.name !== 'AbortError') {
         error('Stream Error', `Failed to start stream: ${err}`)
       }
-      
+
       setIsStreaming(false)
       setCurrentMessageId(null)
-      
+
       // Update message to show appropriate status
       if (messageId) {
         const content = err.name === 'AbortError' 
@@ -458,14 +462,14 @@ const StreamMonitor: React.FC = () => {
         
         setMessages(prev => prev.map(msg => 
           msg.id === messageId ? {
-            ...msg,
-            content,
+                  ...msg,
+                  content,
             streaming: false
           } : msg
         ))
+                }
       }
     }
-  }
 
   const handleStopStream = () => {
     // Abort the fetch request
@@ -473,19 +477,19 @@ const StreamMonitor: React.FC = () => {
       abortControllerRef.current.abort()
       abortControllerRef.current = null
     }
-    
+
     if (evtSourceRef.current) {
       evtSourceRef.current.close()
       evtSourceRef.current = null
     }
-    
+
     setIsStreaming(false)
     setCurrentMessageId(null)
-    
+
     if (currentMessageId) {
       setMessages(prev => prev.map(msg => 
         msg.id === currentMessageId ? {
-          ...msg,
+                ...msg,
           content: msg.content || 'Response was stopped.',
           streaming: false
         } : msg
@@ -581,13 +585,13 @@ const StreamMonitor: React.FC = () => {
       <div className="flex-1 flex flex-col h-full min-w-0 bg-white dark:bg-gray-800 relative order-1 lg:order-1">
         {/* Header with Real-Time Risk Scoring - FIXED TOP */}
         <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 xs:px-4 sm:px-6 py-3 sm:py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 xs:space-x-3">
+          <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3 flex-wrap">
+            <div className="flex items-center space-x-2 xs:space-x-3 min-w-0">
               <div className="w-7 h-7 xs:w-8 xs:h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Shield className="w-4 h-4 xs:w-5 xs:h-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-sm xs:text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <h1 className="text-sm xs:text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                   <span className="hidden xs:inline">Compliance AI Chat</span>
                   <span className="xs:hidden">AI Chat</span>
                 </h1>
@@ -596,14 +600,14 @@ const StreamMonitor: React.FC = () => {
                 </p>
               </div>
             </div>
-            
+
             {/* MAIN ACTION - Real-Time Risk Scoring */}
-            <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className="flex items-center space-x-1 xs:space-x-2 sm:space-x-3 flex-shrink-0">
               {isStreaming && (
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="flex items-center space-x-2 xs:space-x-3 px-2 xs:px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800"
+                  className="hidden sm:flex items-center space-x-2 xs:space-x-3 px-2 xs:px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800"
                 >
                   <div className="flex items-center space-x-1 xs:space-x-2">
                     <Target className="w-4 h-4 xs:w-5 xs:h-5 text-blue-600 animate-pulse" />
@@ -611,7 +615,7 @@ const StreamMonitor: React.FC = () => {
                       <div className="text-xs xs:text-sm font-bold text-blue-900 dark:text-blue-100">
                         <span className="hidden xs:inline">Risk Score: </span>{currentRiskScore.toFixed(3)}
                       </div>
-                      <div className="text-xs text-blue-600 dark:text-blue-400 hidden sm:block">
+                      <div className="text-xs text-blue-600 dark:text-blue-400 hidden md:block">
                         {processingStatus === 'analyzing' ? 'Analyzing input...' : 
                          processingStatus === 'streaming' ? 'Monitoring response...' : 
                          'Processing...'}
@@ -621,27 +625,27 @@ const StreamMonitor: React.FC = () => {
                   <RiskBadge score={currentRiskScore} />
                 </motion.div>
               )}
-              
-              <Button 
+
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowSettings(!showSettings)}
-                icon={showSettings ? <ChevronDown className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
-                title={showSettings ? "Hide Settings" : "Show Settings"}
-                className={`transition-all duration-200 ${showSettings ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                onClick={() => window.location.assign('/testing')}
+                icon={<BarChart3 className="w-4 h-4" />}
+                title="Go to Test Suite"
+                className="transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                <span className="hidden sm:inline">{showSettings ? "Hide" : "Settings"}</span>
+                <span className="hidden md:inline">Test Suite</span>
               </Button>
-              
-              <Button 
+
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowComplianceInfo(!showComplianceInfo)}
                 icon={<Info className="w-4 h-4" />}
                 className="hidden sm:flex"
               >
-                <span className="hidden md:inline">How it Works</span>
-                <span className="md:hidden">Info</span>
+                <span className="hidden lg:inline">How it Works</span>
+                <span className="lg:hidden">Info</span>
               </Button>
             </div>
           </div>
@@ -649,7 +653,7 @@ const StreamMonitor: React.FC = () => {
 
         {/* Mobile Debug Panel Toggle */}
         <div className="lg:hidden flex-shrink-0 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 px-3 xs:px-4 py-2">
-          <Button 
+          <Button
             variant="outline"
             size="sm"
             onClick={() => setShowDebugPanel(!showDebugPanel)}
@@ -673,10 +677,10 @@ const StreamMonitor: React.FC = () => {
         )}
 
         {/* Messages Area - SCROLLABLE ONLY */}
-        <div 
-          className="flex-1 overflow-y-auto overflow-x-hidden" 
+        <div
+          className="flex-1 overflow-y-auto overflow-x-hidden"
           ref={chatContainerRef}
-          style={{ 
+          style={{
             scrollBehavior: 'smooth',
             minHeight: 0
           }}
@@ -705,159 +709,159 @@ const StreamMonitor: React.FC = () => {
               <div className="space-y-4 xs:space-y-6 pb-4">
                 {messages.map((message, index) => {
                   return (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    onMouseEnter={() => setHoveredMessage(message.id)}
-                    onMouseLeave={() => setHoveredMessage(null)}
-                  >
+                      onMouseEnter={() => setHoveredMessage(message.id)}
+                      onMouseLeave={() => setHoveredMessage(null)}
+                    >
                     <div className={`max-w-3xl w-full ${message.role === 'user' ? 'ml-6 xs:ml-8 sm:ml-12' : 'mr-6 xs:mr-8 sm:mr-12'}`}>
                       <div className={`
                         rounded-2xl p-3 xs:p-4 shadow-sm relative group
                         ${message.role === 'user' 
                           ? 'bg-blue-600 text-white ml-auto rounded-tr-md' 
-                          : message.blocked 
+                            : message.blocked
                           ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-tl-md'
                           : 'bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-tl-md'
                         }
                       `}>
-                        {/* Message Header */}
-                        <div className="flex items-center justify-between mb-1 xs:mb-2">
-                          <div className="flex items-center space-x-2">
+                          {/* Message Header */}
+                          <div className="flex items-center justify-between mb-1 xs:mb-2">
+                            <div className="flex items-center space-x-2">
                             <div className={`
                               w-6 h-6 rounded-full flex items-center justify-center
                               ${message.role === 'user' 
                                 ? 'bg-white bg-opacity-20 text-white' 
-                                : message.blocked
+                                  : message.blocked
                                 ? 'bg-red-500 text-white'
                                 : 'bg-green-500 text-white'
                               }
                             `}>
                               {message.role === 'user' ? (
-                                <User className="w-4 h-4" />
-                              ) : message.blocked ? (
-                                <AlertTriangle className="w-4 h-4" />
-                              ) : (
-                                <Bot className="w-4 h-4" />
-                              )}
-                            </div>
+                                  <User className="w-4 h-4" />
+                                ) : message.blocked ? (
+                                  <AlertTriangle className="w-4 h-4" />
+                                ) : (
+                                  <Bot className="w-4 h-4" />
+                                )}
+                              </div>
                             <span className={`text-xs xs:text-sm font-medium ${
                               message.role === 'user' 
                                 ? 'text-blue-100' 
-                                : message.blocked
+                                    : message.blocked
                                 ? 'text-red-700 dark:text-red-300'
                                 : 'text-gray-600 dark:text-gray-300'
                             }`}>
                               {message.role === 'user' ? 'You' : message.blocked ? 'Blocked Response' : 'AI Assistant'}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center space-x-2">
-                            {message.streaming && (
-                              <div className="flex items-center space-x-1">
-                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                              </span>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              {message.streaming && (
+                                <div className="flex items-center space-x-1">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                 <span className="text-xs text-green-600 dark:text-green-400 hidden xs:inline">Streaming</span>
-                              </div>
-                            )}
-                            {message.riskScore !== undefined && (
-                              <RiskBadge score={message.riskScore} />
-                            )}
+                                </div>
+                              )}
+                              {message.riskScore !== undefined && (
+                                <RiskBadge score={message.riskScore} />
+                              )}
                             {message.role === 'assistant' && !message.blocked && !message.streaming && (
-                              <Badge variant="success" size="sm">
-                                ✓ Safe
-                              </Badge>
-                            )}
-                            
-                            {/* Message Actions */}
-                            <AnimatePresence>
-                              {hoveredMessage === message.id && (
-                                <motion.div
-                                  initial={{ opacity: 0, scale: 0.8 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  exit={{ opacity: 0, scale: 0.8 }}
-                                  className="flex items-center space-x-1"
-                                >
-                                  <button
-                                    onClick={() => copyMessage(message.content)}
-                                    className="p-1 rounded hover:bg-black hover:bg-opacity-10 transition-colors"
+                                  <Badge variant="success" size="sm">
+                                    ✓ Safe
+                                  </Badge>
+                                )}
+
+                              {/* Message Actions */}
+                              <AnimatePresence>
+                                {hoveredMessage === message.id && (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    className="flex items-center space-x-1"
                                   >
-                                    <Copy className="w-3 h-3" />
-                                  </button>
-                                  {((message.role === 'user' && message.inputAnalysis && message.inputAnalysis.length > 0) ||
-                                    (message.role === 'assistant' && message.responseWindows && message.responseWindows.length > 0)) && (
                                     <button
-                                      onClick={() => setExpandedMessage(expandedMessage === message.id ? null : message.id)}
+                                    onClick={() => copyMessage(message.content)}
                                       className="p-1 rounded hover:bg-black hover:bg-opacity-10 transition-colors"
                                     >
-                                      <Hash className="w-3 h-3" />
+                                      <Copy className="w-3 h-3" />
                                     </button>
-                                  )}
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
+                                  {((message.role === 'user' && message.inputAnalysis && message.inputAnalysis.length > 0) ||
+                                    (message.role === 'assistant' && message.responseWindows && message.responseWindows.length > 0)) && (
+                                      <button
+                                      onClick={() => setExpandedMessage(expandedMessage === message.id ? null : message.id)}
+                                        className="p-1 rounded hover:bg-black hover:bg-opacity-10 transition-colors"
+                                      >
+                                        <Hash className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
                           </div>
-                        </div>
-                        
-                        {/* Message Content */}
+
+                          {/* Message Content */}
                         <div className={`
                           text-sm xs:text-base leading-relaxed
                           ${message.role === 'user' 
                             ? 'text-white' 
-                            : message.blocked
+                              : message.blocked
                             ? 'text-red-800 dark:text-red-200'
                             : 'text-gray-900 dark:text-white'
                           }
                         `}>
-                          {message.content ? (
+                            {message.content ? (
                             message.role === 'assistant' ? (
                               <MarkdownRenderer 
                                 content={message.content}
                                 className="text-inherit"
                               />
-                            ) : (
-                              <span>{message.content}</span>
-                            )
-                          ) : message.streaming ? (
+                              ) : (
+                                <span>{message.content}</span>
+                              )
+                            ) : message.streaming ? (
                             <span className="text-gray-500 dark:text-gray-400 italic">Generating response...</span>
-                          ) : (
+                            ) : (
                             <span className="text-gray-500 dark:text-gray-400 italic">No content</span>
-                          )}
-                          {message.streaming && (
-                            <motion.span 
-                              animate={{ opacity: [1, 0, 1] }}
-                              transition={{ duration: 1, repeat: Infinity }}
-                              className="inline-block w-0.5 h-5 bg-blue-500 ml-1 rounded-sm"
-                            />
-                          )}
-                        </div>
-                        
-                        {/* Window Analysis Details */}
-                        <AnimatePresence>
+                            )}
+                            {message.streaming && (
+                              <motion.span
+                                animate={{ opacity: [1, 0, 1] }}
+                                transition={{ duration: 1, repeat: Infinity }}
+                                className="inline-block w-0.5 h-5 bg-blue-500 ml-1 rounded-sm"
+                              />
+                            )}
+                          </div>
+
+                          {/* Window Analysis Details */}
+                          <AnimatePresence>
                           {expandedMessage === message.id && (
                             (message.role === 'user' && message.inputAnalysis) || 
                             (message.role === 'assistant' && message.responseWindows)
                           ) && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600"
-                            >
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600"
+                                >
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                                 Window Analysis: {(message.role === 'user' ? message.inputAnalysis : message.responseWindows)?.length || 0} windows analyzed
-                              </div>
-                              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                  </div>
+                                  <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                 {(message.role === 'user' ? message.inputAnalysis : message.responseWindows)?.map((analysis, idx) => (
-                                  <div
-                                    key={idx}
-                                    className={`
+                                      <div
+                                        key={idx}
+                                        className={`
                                       p-2 rounded text-xs border
                                       ${analysis.total_score >= analysisConfig.risk_threshold
                                         ? 'bg-red-100 border-red-300 text-red-800'
-                                        : analysis.total_score >= 0.3
+                                          : analysis.total_score >= 0.3
                                         ? 'bg-yellow-100 border-yellow-300 text-yellow-800'
                                         : 'bg-green-100 border-green-300 text-green-800'
                                       }
@@ -866,18 +870,18 @@ const StreamMonitor: React.FC = () => {
                                     <div className="font-bold">Window {idx + 1}</div>
                                     <div>Risk: {analysis.total_score.toFixed(3)}</div>
                                     <div>Tokens: {analysis.window_start}-{analysis.window_end}</div>
-                                    <div className="mt-1 text-xs opacity-75 line-clamp-2">
+                                        <div className="mt-1 text-xs opacity-75 line-clamp-2">
                                       "{analysis.window_text.substring(0, 50)}..."
-                                    </div>
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                                </motion.div>
+                              )}
+                          </AnimatePresence>
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
+                    </motion.div>
                   )
                 })}
                 <div ref={messagesEndRef} />
@@ -885,7 +889,7 @@ const StreamMonitor: React.FC = () => {
             )}
           </div>
         </div>
-        
+
         {/* Input Area - FIXED BOTTOM */}
         <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 relative z-10">
           {/* Settings Panel */}
@@ -906,15 +910,15 @@ const StreamMonitor: React.FC = () => {
                         Unsaved changes
                       </span>
                     )}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    {/* <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setShowSettings(false)}
                       icon={<ChevronUp className="w-4 h-4" />}
                       title="Hide Settings"
                     >
                       Hide
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 xs:grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 xs:gap-4 text-sm mb-4">
@@ -925,15 +929,15 @@ const StreamMonitor: React.FC = () => {
                       </label>
                       <span className="text-xs text-gray-500 dark:text-gray-400">50-500 tokens</span>
                     </div>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={tempConfig.analysis_window_size}
                       onChange={(e) => {
                         setTempConfig(prev => ({...prev, analysis_window_size: e.target.value}))
                         setHasUnsavedChanges(true)
                       }}
                       className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        configErrors.analysis_window_size 
+                        configErrors.analysis_window_size
                           ? 'border-red-500 focus:border-red-500' 
                           : 'border-gray-300 dark:border-gray-600 focus:border-blue-500'
                       }`}
@@ -955,15 +959,15 @@ const StreamMonitor: React.FC = () => {
                       </label>
                       <span className="text-xs text-gray-500 dark:text-gray-400">5-100 tokens</span>
                     </div>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={tempConfig.analysis_frequency}
                       onChange={(e) => {
                         setTempConfig(prev => ({...prev, analysis_frequency: e.target.value}))
                         setHasUnsavedChanges(true)
                       }}
                       className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        configErrors.analysis_frequency 
+                        configErrors.analysis_frequency
                           ? 'border-red-500 focus:border-red-500' 
                           : 'border-gray-300 dark:border-gray-600 focus:border-blue-500'
                       }`}
@@ -985,15 +989,15 @@ const StreamMonitor: React.FC = () => {
                       </label>
                       <span className="text-xs text-gray-500 dark:text-gray-400">0.0-1.0</span>
                     </div>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={tempConfig.risk_threshold}
                       onChange={(e) => {
                         setTempConfig(prev => ({...prev, risk_threshold: e.target.value}))
                         setHasUnsavedChanges(true)
                       }}
                       className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                        configErrors.risk_threshold 
+                        configErrors.risk_threshold
                           ? 'border-red-500 focus:border-red-500' 
                           : 'border-gray-300 dark:border-gray-600 focus:border-blue-500'
                       }`}
@@ -1009,13 +1013,13 @@ const StreamMonitor: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                
+
                 {/* Action buttons */}
                 <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between pt-3 border-t border-gray-200 dark:border-gray-600 gap-3 xs:gap-0">
                   <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="primary" 
-                      size="sm" 
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={saveConfig}
                       disabled={!hasUnsavedChanges}
                       className={hasUnsavedChanges ? 'animate-pulse' : ''}
@@ -1032,10 +1036,10 @@ const StreamMonitor: React.FC = () => {
                       </Button>
                     )}
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={clearChat} 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearChat}
                     disabled={isStreaming}
                     className="w-full xs:w-auto"
                   >
@@ -1081,24 +1085,18 @@ const StreamMonitor: React.FC = () => {
                   }}
                 />
                 
-                {/* Character Counter - Top Right */}
-                <div className="absolute top-3 right-16 flex items-center space-x-2">
-                  <span className={`text-xs font-medium transition-colors duration-200 ${
-                    currentMessage.length > 1000 
-                      ? 'text-red-500' 
-                      : currentMessage.length > 500 
-                      ? 'text-amber-500' 
-                      : 'text-gray-400 dark:text-gray-500'
-                  }`}>
-                    {currentMessage.length}
-                  </span>
-                  {currentMessage.trim() && !isStreaming && (
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  )}
-                </div>
-                
-                {/* Integrated Action Button - Bottom Right */}
-                <div className="absolute bottom-3 right-3 flex items-center">
+                {/* (counter moved below input) */}
+
+                {/* Integrated Action Buttons - Bottom Right */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  {/* Inline Settings icon-only button */}
+                  <button
+                    onClick={() => setShowSettings(!showSettings)}
+                    title={showSettings ? 'Hide Settings' : 'Show Settings'}
+                    className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center shadow-sm hover:shadow-md transition-all"
+                  >
+                    {showSettings ? <ChevronDown className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
+                  </button>
                   {isStreaming ? (
                     <button
                       onClick={handleStopStream}
@@ -1117,33 +1115,35 @@ const StreamMonitor: React.FC = () => {
                           : 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed opacity-60'
                       }`}
                       title={
-                        !currentMessage.trim() 
-                          ? "Enter a message to send" 
-                          : !isConnected 
-                          ? "Connection unavailable" 
+                        !currentMessage.trim()
+                          ? "Enter a message to send"
+                          : !isConnected
+                          ? "Connection unavailable"
                           : "Send message (Enter)"
                       }
                     >
-                      <Send className={`w-5 h-5 transition-all duration-200 ${
-                        currentMessage.trim() && isConnected 
-                          ? 'text-white transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5' 
-                          : 'text-gray-500 dark:text-gray-400'
-                      }`} />
+                      <Send
+                        className={`w-5 h-5 transition-all duration-200 ${
+                          currentMessage.trim() && isConnected
+                            ? 'text-white transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5' 
+                            : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                      />
                     </button>
                   )}
                 </div>
-                
+
                 {/* Input Border States */}
                 <div className={`absolute inset-0 rounded-2xl border-2 pointer-events-none transition-all duration-200 ${
-                  isStreaming 
+                    isStreaming
                     ? 'border-amber-200 dark:border-amber-800 bg-amber-50/20 dark:bg-amber-900/20' 
-                    : currentMessage.trim()
+                      : currentMessage.trim()
                     ? 'border-blue-300 dark:border-blue-600'
                     : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                 }`}></div>
               </div>
             </div>
-            
+
             {/* Quick Status */}
             <div className="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 flex-wrap gap-2">
               <div className="flex items-center space-x-2 xs:space-x-4">
@@ -1159,10 +1159,28 @@ const StreamMonitor: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-2 text-xs">
-                <span className="hidden xs:inline">Windows: {analysisConfig.analysis_window_size} tokens</span>
+                {/* Character Counter (outside input) */}
+                <span className={`font-medium ${
+                  currentMessage.length > 1000
+                    ? 'text-red-500'
+                    : currentMessage.length > 500
+                    ? 'text-amber-500'
+                    : 'text-gray-400 dark:text-gray-500'
+                }`}>
+                  {currentMessage.length}
+                </span>
+                {currentMessage.trim() && !isStreaming && (
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                )}
+                <span>•</span>
+                <span className="hidden xs:inline">
+                  Window Size: {analysisConfig.analysis_window_size} tokens
+                </span>
                 <span className="xs:hidden">{analysisConfig.analysis_window_size}t</span>
                 <span>•</span>
-                <span className="hidden xs:inline">Frequency: {analysisConfig.analysis_frequency}</span>
+                <span className="hidden xs:inline">
+                  Analysis Frequency: {analysisConfig.analysis_frequency}
+                </span>
                 <span className="xs:hidden">{analysisConfig.analysis_frequency}x</span>
               </div>
             </div>
@@ -1178,7 +1196,7 @@ const StreamMonitor: React.FC = () => {
         z-40 lg:z-auto
         bg-gray-50 dark:bg-gray-900 
         border-l border-gray-200 dark:border-gray-700 
-        flex flex-col h-full
+        flex flex-col h-full max-h-screen overflow-y-auto
         lg:order-2 order-2
         ${showDebugPanel ? 'lg:shadow-none shadow-2xl' : ''}
       `}>
@@ -1193,7 +1211,7 @@ const StreamMonitor: React.FC = () => {
                 Real-time analysis details
               </p>
             </div>
-            <Button 
+            <Button
               variant="outline"
               size="sm"
               onClick={() => setShowDebugPanel(false)}
@@ -1202,23 +1220,34 @@ const StreamMonitor: React.FC = () => {
             />
           </div>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-3 xs:p-4 space-y-3 xs:space-y-4">
           {/* Decision Timeline */}
           <div>
-            <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white mb-2 flex items-center space-x-2">
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white flex items-center space-x-2">
               <Clock className="w-3 h-3 xs:w-4 xs:h-4 text-blue-600" />
               <span>Decision Timeline</span>
-              <Badge variant="secondary" size="sm">{events.length}</Badge>
+                <Badge variant="secondary" size="sm">{events.length}</Badge>
             </h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDecisionTimelineModal(true)}
+                className="p-1 h-6 w-6 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                title="Expand"
+              >
+                <Maximize2 className="w-3 h-3 text-blue-600" />
+              </Button>
+            </div>
             
             <div className="space-y-2 max-h-32 xs:max-h-48 overflow-y-auto">{events.length > 0 ? (
                 events.slice().reverse().map((event) => (
-                  <motion.div
-                    key={event.id}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className={`
+                    <motion.div
+                      key={event.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className={`
                       p-3 rounded-lg text-xs border-l-4
                       ${event.type === 'blocked' 
                         ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
@@ -1229,27 +1258,27 @@ const StreamMonitor: React.FC = () => {
                         : 'border-green-500 bg-green-50 dark:bg-green-900/20'
                       }
                     `}
-                  >
-                    <div className="font-mono text-xs text-gray-500 mb-1">
-                      {event.timestamp}
-                    </div>
-                    <div className="text-gray-700 dark:text-gray-300 font-medium">
-                      {event.description}
-                    </div>
-                    {event.risk !== undefined && (
-                      <div className="mt-1">
-                        <RiskBadge score={event.risk} />
+                    >
+                      <div className="font-mono text-xs text-gray-500 mb-1">
+                        {event.timestamp}
                       </div>
-                    )}
-                    {event.patterns && event.patterns.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {event.patterns.slice(0, 3).map((pattern, idx) => (
+                      <div className="text-gray-700 dark:text-gray-300 font-medium">
+                        {event.description}
+                      </div>
+                      {event.risk !== undefined && (
+                        <div className="mt-1">
+                          <RiskBadge score={event.risk} />
+                        </div>
+                      )}
+                      {event.patterns && event.patterns.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {event.patterns.slice(0, 3).map((pattern, idx) => (
                           <Badge key={idx} variant="warning" size="sm">{pattern}</Badge>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
-                ))
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  ))
               ) : (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                   <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -1261,12 +1290,23 @@ const StreamMonitor: React.FC = () => {
 
           {/* AI Response Stream */}
           <div>
-            <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white mb-2 flex items-center space-x-2">
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white flex items-center space-x-2">
               <Zap className="w-3 h-3 xs:w-4 xs:h-4 text-green-600" />
               <span>Response Stream</span>
-              <Badge variant="success" size="sm">{tokens.length} tokens</Badge>
+                <Badge variant="success" size="sm">{tokens.length} tokens</Badge>
             </h4>
-            
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowResponseStreamModal(true)}
+                className="p-1 h-6 w-6 hover:bg-green-100 dark:hover:bg-green-900/30"
+                title="Expand"
+              >
+                <Maximize2 className="w-3 h-3 text-green-600" />
+              </Button>
+            </div>
+
             <div className="space-y-1 max-h-32 xs:max-h-48 overflow-y-auto">
               {tokens.length > 0 ? (
                 tokens.slice(-20).map((token, index) => (
@@ -1297,7 +1337,7 @@ const StreamMonitor: React.FC = () => {
               )}
             </div>
           </div>
-          
+
           {/* Live Statistics - Current Session Only */}
           <div>
             <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white mb-2 flex items-center space-x-2">
@@ -1327,7 +1367,7 @@ const StreamMonitor: React.FC = () => {
                 <div className="text-purple-700 dark:text-purple-300">Efficiency</div>
               </div>
             </div>
-            
+
             {/* Session Performance Metrics */}
             {inputWindowAnalyses.length > 0 && (
               <div className="mt-3 p-3 bg-gray-100 dark:bg-gray-800 rounded border">
@@ -1350,7 +1390,7 @@ const StreamMonitor: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Global Statistics (Collapsed by default) */}
             <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded border">
               <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Global App Metrics</div>
@@ -1375,7 +1415,7 @@ const StreamMonitor: React.FC = () => {
 
       {/* Debug Panel Mobile Overlay Background */}
       {showDebugPanel && (
-        <div 
+        <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
           onClick={() => setShowDebugPanel(false)}
         />
@@ -1408,17 +1448,17 @@ const StreamMonitor: React.FC = () => {
                     Close
                   </Button>
                 </div>
-                
+
                 <div className="space-y-3 xs:space-y-4">
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                     <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">Input Analysis</h4>
                     <p className="text-sm text-blue-800 dark:text-blue-300">
                       Your input is analyzed using {analysisConfig.analysis_window_size}-token sliding windows, 
-                      with analysis performed every {analysisConfig.analysis_frequency} tokens. This provides 
+                      with analysis performed every {analysisConfig.analysis_frequency} tokens. This provides {" "} 
                       {analysisConfig.analysis_frequency}x efficiency compared to token-by-token analysis.
                     </p>
                   </div>
-                  
+
                   <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
                     <h4 className="font-semibold text-green-900 dark:text-green-200 mb-2">Response Streaming</h4>
                     <p className="text-sm text-green-800 dark:text-green-300">
@@ -1426,7 +1466,7 @@ const StreamMonitor: React.FC = () => {
                       Input analysis gates the entire response - no need to analyze each output token.
                     </p>
                   </div>
-                  
+
                   <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
                     <h4 className="font-semibold text-orange-900 dark:text-orange-200 mb-2">Risk Assessment</h4>
                     <p className="text-sm text-orange-800 dark:text-orange-300">
@@ -1434,7 +1474,7 @@ const StreamMonitor: React.FC = () => {
                       The system uses pattern matching and Microsoft Presidio for PII/PHI/PCI detection.
                     </p>
                   </div>
-                  
+
                   <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
                     <h4 className="font-semibold text-purple-900 dark:text-purple-200 mb-2">Efficiency Benefits</h4>
                     <p className="text-sm text-purple-800 dark:text-purple-300">
@@ -1444,6 +1484,115 @@ const StreamMonitor: React.FC = () => {
                     </p>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Decision Timeline Modal */}
+        {showDecisionTimelineModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowDecisionTimelineModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold">Decision Timeline</h3>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowDecisionTimelineModal(false)}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <div className="p-5 overflow-y-auto max-h-[calc(85vh-64px)] space-y-3">
+                {events.length > 0 ? (
+                  events.slice().reverse().map((event) => (
+                    <div
+                      key={event.id}
+                      className={`p-4 rounded-lg border-l-4 ${
+                        event.type === 'blocked'
+                          ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                          : event.type === 'risk_alert'
+                          ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
+                          : event.type === 'input_window_analysis'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-mono text-xs text-gray-500">{event.timestamp}</span>
+                        {event.risk !== undefined && <RiskBadge score={event.risk} />}
+                      </div>
+                      <div className="text-sm text-gray-800 dark:text-gray-200">{event.description}</div>
+                      {event.patterns && event.patterns.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {event.patterns.map((p, i) => (
+                            <Badge key={i} variant="warning" size="sm">{p}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 dark:text-gray-400 py-10">No events yet</div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Response Stream Modal */}
+        {showResponseStreamModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowResponseStreamModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center space-x-2">
+                  <Zap className="w-5 h-5 text-green-600" />
+                  <h3 className="text-lg font-semibold">Response Stream</h3>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowResponseStreamModal(false)}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <div className="p-5 overflow-y-auto max-h-[calc(85vh-64px)] space-y-2">
+                {tokens.length > 0 ? (
+                  tokens.map((token, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 rounded bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+                    >
+                      <span className="font-mono text-sm text-gray-900 dark:text-white break-all mr-3">"{token.text}"</span>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="success" size="sm">✓</Badge>
+                        <span className="text-xs text-gray-500 font-mono">{token.timestamp.split('.')[1]}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 dark:text-gray-400 py-10">No response tokens yet</div>
+                )}
               </div>
             </motion.div>
           </motion.div>
