@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Play, Download, Settings, RefreshCw } from "lucide-react";
+import { Play, Download, Settings, RefreshCw, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -619,6 +619,18 @@ const TestSuite: React.FC = () => {
             <span className="sm:hidden">
               {isRunning ? "Running..." : "Run All"}
             </span>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => window.location.assign('/audit')}
+            icon={<Eye className="w-4 h-4" />}
+            iconPosition="left"
+            className="flex-shrink-0"
+            title="View Audit Logs"
+          >
+            <span className="hidden sm:inline">Audit Logs</span>
+            <span className="sm:hidden">Audit</span>
           </Button>
 
           <div className="relative">
