@@ -21,7 +21,9 @@ import {
   ChevronUp,
   Activity,
   Zap,
-  Target
+  Target,
+  Maximize2,
+  X
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge, RiskBadge } from '@/components/ui/Badge'
@@ -123,6 +125,8 @@ const StreamMonitor: React.FC = () => {
   const [showComplianceInfo, setShowComplianceInfo] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showDebugPanel, setShowDebugPanel] = useState(false)
+  const [showDecisionTimelineModal, setShowDecisionTimelineModal] = useState(false)
+  const [showResponseStreamModal, setShowResponseStreamModal] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'analyzing' | 'streaming' | 'complete'>('idle')
   const [expandedMessage, setExpandedMessage] = useState<string | null>(null)
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
@@ -582,13 +586,13 @@ const StreamMonitor: React.FC = () => {
       <div className="flex-1 flex flex-col h-full min-w-0 bg-white dark:bg-gray-800 relative order-1 lg:order-1">
         {/* Header with Real-Time Risk Scoring - FIXED TOP */}
         <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 xs:px-4 sm:px-6 py-3 sm:py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 xs:space-x-3">
+          <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3 flex-wrap">
+            <div className="flex items-center space-x-2 xs:space-x-3 min-w-0">
               <div className="w-7 h-7 xs:w-8 xs:h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Shield className="w-4 h-4 xs:w-5 xs:h-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-sm xs:text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <h1 className="text-sm xs:text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                   <span className="hidden xs:inline">Compliance AI Chat</span>
                   <span className="xs:hidden">AI Chat</span>
                 </h1>
@@ -599,12 +603,12 @@ const StreamMonitor: React.FC = () => {
             </div>
             
             {/* MAIN ACTION - Real-Time Risk Scoring */}
-            <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className="flex items-center space-x-1 xs:space-x-2 sm:space-x-3 flex-shrink-0">
               {isStreaming && (
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="flex items-center space-x-2 xs:space-x-3 px-2 xs:px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800"
+                  className="hidden sm:flex items-center space-x-2 xs:space-x-3 px-2 xs:px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800"
                 >
                   <div className="flex items-center space-x-1 xs:space-x-2">
                     <Target className="w-4 h-4 xs:w-5 xs:h-5 text-blue-600 animate-pulse" />
@@ -612,7 +616,7 @@ const StreamMonitor: React.FC = () => {
                       <div className="text-xs xs:text-sm font-bold text-blue-900 dark:text-blue-100">
                         <span className="hidden xs:inline">Risk Score: </span>{currentRiskScore.toFixed(3)}
                       </div>
-                      <div className="text-xs text-blue-600 dark:text-blue-400 hidden sm:block">
+                      <div className="text-xs text-blue-600 dark:text-blue-400 hidden md:block">
                         {processingStatus === 'analyzing' ? 'Analyzing input...' : 
                          processingStatus === 'streaming' ? 'Monitoring response...' : 
                          'Processing...'}
@@ -631,7 +635,7 @@ const StreamMonitor: React.FC = () => {
                 title={showSettings ? "Hide Settings" : "Show Settings"}
                 className={`transition-all duration-200 ${showSettings ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
               >
-                <span className="hidden sm:inline">{showSettings ? "Hide" : "Settings"}</span>
+                <span className="hidden md:inline">{showSettings ? "Hide" : "Settings"}</span>
               </Button>
               
               <Button 
@@ -641,8 +645,8 @@ const StreamMonitor: React.FC = () => {
                 icon={<Info className="w-4 h-4" />}
                 className="hidden sm:flex"
               >
-                <span className="hidden md:inline">How it Works</span>
-                <span className="md:hidden">Info</span>
+                <span className="hidden lg:inline">How it Works</span>
+                <span className="lg:hidden">Info</span>
               </Button>
             </div>
           </div>
@@ -1226,7 +1230,7 @@ const StreamMonitor: React.FC = () => {
         z-40 lg:z-auto
         bg-gray-50 dark:bg-gray-900 
         border-l border-gray-200 dark:border-gray-700 
-        flex flex-col h-full
+        flex flex-col h-full max-h-screen overflow-y-auto
         lg:order-2 order-2
         ${showDebugPanel ? 'lg:shadow-none shadow-2xl' : ''}
       `}>
@@ -1254,11 +1258,22 @@ const StreamMonitor: React.FC = () => {
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-3 xs:p-4 space-y-3 xs:space-y-4">
           {/* Decision Timeline */}
           <div>
-            <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white mb-2 flex items-center space-x-2">
-              <Clock className="w-3 h-3 xs:w-4 xs:h-4 text-blue-600" />
-              <span>Decision Timeline</span>
-              <Badge variant="secondary" size="sm">{events.length}</Badge>
-            </h4>
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white flex items-center space-x-2">
+                <Clock className="w-3 h-3 xs:w-4 xs:h-4 text-blue-600" />
+                <span>Decision Timeline</span>
+                <Badge variant="secondary" size="sm">{events.length}</Badge>
+              </h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDecisionTimelineModal(true)}
+                className="p-1 h-6 w-6 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                title="Expand"
+              >
+                <Maximize2 className="w-3 h-3 text-blue-600" />
+              </Button>
+            </div>
             
             <div className="space-y-2 max-h-32 xs:max-h-48 overflow-y-auto">{events.length > 0 ? (
                 events.slice().reverse().map((event) => (
@@ -1309,11 +1324,22 @@ const StreamMonitor: React.FC = () => {
 
           {/* AI Response Stream */}
           <div>
-            <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white mb-2 flex items-center space-x-2">
-              <Zap className="w-3 h-3 xs:w-4 xs:h-4 text-green-600" />
-              <span>Response Stream</span>
-              <Badge variant="success" size="sm">{tokens.length} tokens</Badge>
-            </h4>
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white flex items-center space-x-2">
+                <Zap className="w-3 h-3 xs:w-4 xs:h-4 text-green-600" />
+                <span>Response Stream</span>
+                <Badge variant="success" size="sm">{tokens.length} tokens</Badge>
+              </h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowResponseStreamModal(true)}
+                className="p-1 h-6 w-6 hover:bg-green-100 dark:hover:bg-green-900/30"
+                title="Expand"
+              >
+                <Maximize2 className="w-3 h-3 text-green-600" />
+              </Button>
+            </div>
             
             <div className="space-y-1 max-h-32 xs:max-h-48 overflow-y-auto">
               {tokens.length > 0 ? (
@@ -1492,6 +1518,115 @@ const StreamMonitor: React.FC = () => {
                     </p>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Decision Timeline Modal */}
+        {showDecisionTimelineModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowDecisionTimelineModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold">Decision Timeline</h3>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowDecisionTimelineModal(false)}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <div className="p-5 overflow-y-auto max-h-[calc(85vh-64px)] space-y-3">
+                {events.length > 0 ? (
+                  events.slice().reverse().map((event) => (
+                    <div
+                      key={event.id}
+                      className={`p-4 rounded-lg border-l-4 ${
+                        event.type === 'blocked'
+                          ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                          : event.type === 'risk_alert'
+                          ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
+                          : event.type === 'input_window_analysis'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-mono text-xs text-gray-500">{event.timestamp}</span>
+                        {event.risk !== undefined && <RiskBadge score={event.risk} />}
+                      </div>
+                      <div className="text-sm text-gray-800 dark:text-gray-200">{event.description}</div>
+                      {event.patterns && event.patterns.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {event.patterns.map((p, i) => (
+                            <Badge key={i} variant="warning" size="sm">{p}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 dark:text-gray-400 py-10">No events yet</div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Response Stream Modal */}
+        {showResponseStreamModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowResponseStreamModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center space-x-2">
+                  <Zap className="w-5 h-5 text-green-600" />
+                  <h3 className="text-lg font-semibold">Response Stream</h3>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowResponseStreamModal(false)}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <div className="p-5 overflow-y-auto max-h-[calc(85vh-64px)] space-y-2">
+                {tokens.length > 0 ? (
+                  tokens.map((token, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 rounded bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+                    >
+                      <span className="font-mono text-sm text-gray-900 dark:text-white break-all mr-3">"{token.text}"</span>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="success" size="sm">✓</Badge>
+                        <span className="text-xs text-gray-500 font-mono">{token.timestamp.split('.')[1]}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 dark:text-gray-400 py-10">No response tokens yet</div>
+                )}
               </div>
             </motion.div>
           </motion.div>
