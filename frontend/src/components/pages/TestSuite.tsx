@@ -591,10 +591,10 @@ const TestSuite: React.FC = () => {
       >
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-            Test Suite
+            Compliance Test Suite
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Comprehensive testing and validation framework
+            Validate detection accuracy, streaming behavior, and integration health
           </p>
         </div>
 

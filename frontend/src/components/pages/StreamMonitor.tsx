@@ -1173,10 +1173,14 @@ const StreamMonitor: React.FC = () => {
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 )}
                 <span>•</span>
-                <span className="hidden xs:inline">Windows: {analysisConfig.analysis_window_size} tokens</span>
+                <span className="hidden xs:inline">
+                  Window Size: {analysisConfig.analysis_window_size} tokens
+                </span>
                 <span className="xs:hidden">{analysisConfig.analysis_window_size}t</span>
                 <span>•</span>
-                <span className="hidden xs:inline">Frequency: {analysisConfig.analysis_frequency}</span>
+                <span className="hidden xs:inline">
+                  Analysis Frequency: {analysisConfig.analysis_frequency}
+                </span>
                 <span className="xs:hidden">{analysisConfig.analysis_frequency}x</span>
               </div>
             </div>

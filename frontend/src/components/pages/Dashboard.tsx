@@ -344,15 +344,11 @@ const Dashboard: React.FC = () => {
           <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-blue-500/60 to-cyan-400/60" />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">
-                Input Windows
-              </div>
+              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Input Windows Analyzed</div>
               <div className="text-2xl xs:text-3xl font-bold text-gray-900 dark:text-white mt-1">
                 {realtimeMetrics.input_windows_analyzed.toLocaleString()}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                User input analyzed
-              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">Inputs analyzed</div>
             </div>
             <div className="shrink-0 rounded-xl p-2 bg-blue-50 ring-1 ring-blue-200 text-blue-600 dark:bg-blue-500/15 dark:ring-blue-400/20 dark:text-blue-400">
               <Activity className="w-5 h-5" />
@@ -365,15 +361,11 @@ const Dashboard: React.FC = () => {
           <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-emerald-500/60 to-green-400/60" />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">
-                Response Windows
-              </div>
+              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Response Windows Analyzed</div>
               <div className="text-2xl xs:text-3xl font-bold text-gray-900 dark:text-white mt-1">
                 {realtimeMetrics.response_windows_analyzed.toLocaleString()}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                AI response analyzed
-              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">Responses analyzed</div>
             </div>
             <div className="shrink-0 rounded-xl p-2 bg-emerald-50 ring-1 ring-emerald-200 text-emerald-600 dark:bg-emerald-500/15 dark:ring-emerald-400/20 dark:text-emerald-400">
               <Activity className="w-5 h-5" />
@@ -407,9 +399,7 @@ const Dashboard: React.FC = () => {
           />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">
-                Avg Risk Score
-              </div>
+              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Average Risk Score</div>
               <div className="text-2xl xs:text-3xl font-bold text-gray-900 dark:text-white mt-1">
                 {realtimeMetrics.avg_risk_score.toFixed(2)}
               </div>

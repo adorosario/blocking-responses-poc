@@ -401,12 +401,12 @@ const AuditLogs: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Audit Logs
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
+          <p className="text-gray-600 dark:text-gray-400 mt-2 mb-4">
             Comprehensive compliance audit trail and event history
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 w-full justify-end items-end content-end sm:justify-end sm:items-end sm:content-end">
           <Button
             variant="outline"
             size="sm"
@@ -415,6 +415,7 @@ const AuditLogs: React.FC = () => {
             loading={loading}
             icon={<RefreshCw className="w-4 h-4" />}
             iconPosition="left"
+            className="w-full sm:w-auto"
           >
             Refresh
           </Button>
@@ -425,6 +426,7 @@ const AuditLogs: React.FC = () => {
             onClick={() => setAutoRefresh(!autoRefresh)}
             icon={<span className="text-sm">{autoRefresh ? "⏸️" : "🔄"}</span>}
             iconPosition="left"
+            className="w-full sm:w-auto"
           >
             {autoRefresh ? "Stop Auto" : "Auto Refresh"}
           </Button>
@@ -436,8 +438,9 @@ const AuditLogs: React.FC = () => {
             disabled={loading || filteredEvents.length === 0}
             icon={<Download className="w-4 h-4" />}
             iconPosition="left"
+            className="w-full sm:w-auto"
           >
-            Export CSV
+            Export as CSV
           </Button>
 
           <Button
@@ -446,8 +449,9 @@ const AuditLogs: React.FC = () => {
             onClick={handleDateRange}
             icon={<Calendar className="w-4 h-4" />}
             iconPosition="left"
+            className="w-full sm:w-auto"
           >
-            Date Range
+            Filter by Date
           </Button>
 
           {(dateRange.start || dateRange.end) && (
@@ -457,7 +461,7 @@ const AuditLogs: React.FC = () => {
               onClick={clearDateRange}
               icon={<X className="w-4 h-4" />}
               iconPosition="left"
-              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border-red-300 hover:border-red-400"
+              className="w-full sm:w-auto text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border-red-300 hover:border-red-400"
             >
               Clear Filter
             </Button>
@@ -658,7 +662,7 @@ const AuditLogs: React.FC = () => {
                       {event.entities_detected.length > 0 && (
                         <div className="mb-3">
                           <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                            DETECTED ENTITIES
+                            Detected Entities
                           </h4>
                           <div className="flex flex-wrap gap-1 sm:gap-2">
                             {event.entities_detected.map((entity, idx) => {
@@ -691,7 +695,7 @@ const AuditLogs: React.FC = () => {
                       {event.patterns_detected.length > 0 && (
                         <div className="mb-3">
                           <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                            TRIGGERED PATTERNS
+                            Patterns Detected
                           </h4>
                           <div className="flex flex-wrap gap-1 sm:gap-2">
                             {event.patterns_detected.map((pattern) => (
@@ -763,9 +767,9 @@ const AuditLogs: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-center"
+          className="text-center mt-4"
         >
-          <Button variant="outline" onClick={handleLoadMore}>
+          <Button variant="outline" onClick={handleLoadMore} className=" mb-4">
             Load More Events
           </Button>
         </motion.div>
