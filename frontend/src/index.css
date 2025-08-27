@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import highlight.js theme for code syntax highlighting */
+@import 'highlight.js/styles/github.css' (prefers-color-scheme: light);
+@import 'highlight.js/styles/github-dark.css' (prefers-color-scheme: dark);
+
 @layer base {
   * {
     @apply border-gray-200 dark:border-gray-700;
@@ -276,7 +280,137 @@
     @apply text-sm xs:text-base sm:text-lg;
   }
 
+  /* Enhanced Markdown Content Styling */
+  .markdown-content {
+    @apply text-sm sm:text-base leading-relaxed;
+  }
+
+  /* Enhanced code highlighting with smooth animations */
+  .markdown-content pre {
+    @apply transition-all duration-200 hover:shadow-md;
+  }
+
+  .markdown-content pre:hover {
+    @apply transform scale-[1.002];
+  }
+
+  /* Improved blockquote styling */
+  .markdown-content blockquote {
+    @apply relative;
+  }
+
+  .markdown-content blockquote:before {
+    content: '"';
+    @apply absolute -left-2 -top-2 text-3xl text-blue-400 dark:text-blue-500 opacity-50;
+  }
+
+  /* Enhanced table hover effects */
+  .markdown-content table tr:hover {
+    @apply bg-gray-50 dark:bg-gray-700/50 transition-colors duration-150;
+  }
+
+  /* Smooth link hover animations */
+  .markdown-content a {
+    @apply relative overflow-hidden;
+  }
+
+  .markdown-content a:before {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-current transition-all duration-300;
+  }
+
+  .markdown-content a:hover:before {
+    @apply w-full;
+  }
+
+  /* Enhanced list styling */
+  .markdown-content ul > li::marker {
+    @apply text-blue-500 dark:text-blue-400;
+  }
+
+  .markdown-content ol > li::marker {
+    @apply text-blue-600 dark:text-blue-400 font-semibold;
+  }
+
+  /* Task list styling */
+  .markdown-content input[type="checkbox"] {
+    @apply w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600;
+  }
+
+  /* Inline code styling improvements */
+  .markdown-content code:not(pre code) {
+    @apply relative;
+  }
+
+  .markdown-content code:not(pre code):before {
+    content: '';
+    @apply absolute inset-0 bg-current opacity-10 rounded;
+  }
+
+  /* Heading anchor hover effects */
+  .markdown-content h1:hover,
+  .markdown-content h2:hover,
+  .markdown-content h3:hover,
+  .markdown-content h4:hover,
+  .markdown-content h5:hover,
+  .markdown-content h6:hover {
+    @apply transition-colors duration-200;
+  }
+
+  /* Math and emoji styling */
+  .markdown-content .emoji {
+    @apply inline-block w-5 h-5;
+  }
+
   .mobile-friendly {
     @apply touch-target focus-ring transition-smooth;
+  }
+}
+
+/* Highlight.js theme overrides for better integration */
+.hljs {
+  @apply !bg-transparent;
+}
+
+/* Dark mode syntax highlighting adjustments */
+@media (prefers-color-scheme: dark) {
+  .hljs {
+    @apply text-gray-200;
+  }
+  
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-title,
+  .hljs-section,
+  .hljs-doctag,
+  .hljs-name,
+  .hljs-strong {
+    @apply text-blue-400;
+  }
+  
+  .hljs-string,
+  .hljs-title.class_,
+  .hljs-title.class_.inherited__,
+  .hljs-title.function_,
+  .hljs-attr,
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-link,
+  .hljs-builtin,
+  .hljs-number {
+    @apply text-green-400;
+  }
+  
+  .hljs-comment,
+  .hljs-quote,
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-tag,
+  .hljs-name,
+  .hljs-selector-id,
+  .hljs-selector-class,
+  .hljs-regexp,
+  .hljs-deletion {
+    @apply text-gray-500;
   }
 }
