@@ -75,7 +75,7 @@ const RecentActivity: React.FC = () => {
               onClick={() => navigate('/audit')}
               icon={<Eye className="w-4 h-4" />} 
               iconPosition="left"
-              className="gap-1"
+              className="self-start sm:self-center border border-gray-600 dark:border-gray-600 rounded-3xl px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
             >
               <span className="hidden sm:inline">View All</span>
               <span className="sm:hidden">All</span>

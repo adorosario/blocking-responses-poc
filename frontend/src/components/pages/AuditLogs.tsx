@@ -390,7 +390,7 @@ const AuditLogs: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -598,7 +598,7 @@ const AuditLogs: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="space-y-4"
+        className="space-y-6 mt-6"
       >
         {loading ? (
           <Card>
@@ -720,7 +720,7 @@ const AuditLogs: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleViewDetails(event)}
-                          className="self-start sm:self-center"
+                          className="self-start sm:self-center border border-gray-600 dark:border-gray-600 rounded-3xl px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                         >
                           {/* <Eye className="w-3 h-3 mr-1" />
                           <span className="hidden sm:inline">View Details</span>
