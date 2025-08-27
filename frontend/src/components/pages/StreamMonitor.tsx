@@ -910,7 +910,7 @@ const StreamMonitor: React.FC = () => {
                         Unsaved changes
                       </span>
                     )}
-                    <Button
+                    {/* <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setShowSettings(false)}
@@ -918,7 +918,7 @@ const StreamMonitor: React.FC = () => {
                       title="Hide Settings"
                     >
                       Hide
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 xs:grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 xs:gap-4 text-sm mb-4">

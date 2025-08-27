@@ -50,7 +50,7 @@ const Dashboard: React.FC = () => {
     try {
       // Clear and start fresh output
       setTestOutput("🚀 Starting full test suite execution...\n");
-      
+
       // First test simple compliance assessment to generate real data
       const testMessage = "Test SSN: 123-45-6789 for compliance blocking";
       appendTestOutput(
@@ -74,14 +74,14 @@ const Dashboard: React.FC = () => {
         const data = response.data;
         appendTestOutput(`✅ Test session started: ${data.session_id}\n`);
         appendTestOutput(`📊 Status: ${data.status}\n`);
-        
+
         if (data.output) {
           appendTestOutput(`\n📝 Test Output:\n${data.output}\n`);
         }
-        
+
         // Navigate to test suite page with output preserved
         navigate("/testing");
-        
+
         // Show success notification with actual results
         const { passed, failed, total } = response.data.summary || {
           passed: 0,
@@ -100,7 +100,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-    const handleViewLiveStream = () => {
+  const handleViewLiveStream = () => {
     // Navigate to stream monitor page
     navigate("/stream");
   };
@@ -118,16 +118,16 @@ const Dashboard: React.FC = () => {
           blocked: event.blocked,
           session_id: event.session_id,
         }));
-        
+
         // Convert to CSV string
         const csvContent = [
           "Timestamp,Event Type,Compliance Type,Risk Score,Blocked,Session ID",
           ...csvData.map(
             (row: any) =>
-            `${row.timestamp},${row.event_type},${row.compliance_type},${row.risk_score},${row.blocked},${row.session_id}`
+              `${row.timestamp},${row.event_type},${row.compliance_type},${row.risk_score},${row.blocked},${row.session_id}`
           ),
         ].join("\n");
-        
+
         // Download CSV
         const blob = new Blob([csvContent], { type: "text/csv" });
         const url = window.URL.createObjectURL(blob);
@@ -174,7 +174,7 @@ const Dashboard: React.FC = () => {
           const metricsResponse = await apiClient.getMetrics();
           if (metricsResponse.success && metricsResponse.data) {
             updateMetrics(metricsResponse.data);
-            
+
             // Add historical metric point for charting
             const historicalPoint = {
               timestamp: new Date().toISOString(),
@@ -189,7 +189,7 @@ const Dashboard: React.FC = () => {
             };
             useDashboardStore.getState().addHistoricalMetric(historicalPoint);
           }
-          
+
           // Fetch recent audit events for dashboard components
           const auditResponse = await apiClient.getAuditLogs(50);
           if (auditResponse.success && auditResponse.data) {
@@ -202,10 +202,10 @@ const Dashboard: React.FC = () => {
     };
 
     fetchMetrics();
-    
+
     // Set up more frequent metrics refresh for live updates (every 5 seconds)
     const interval = setInterval(fetchMetrics, 5000); // Every 5 seconds
-    
+
     return () => clearInterval(interval);
   }, [isConnected, updateMetrics, setAuditEvents]);
 
@@ -244,7 +244,7 @@ const Dashboard: React.FC = () => {
     >
       {/* Welcome copy + Primary CTA */}
       <motion.div variants={itemVariants}>
-        <Card className="bg-gradient-to-br from-blue-50 via-white to-blue-100 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 shadow-md rounded-2xl p-6 sm:p-8">
+        <Card className="bg-gradient-to-br from-purple-50  to-blue-50 dark:from-purple-900/20 dark:via-gray-900 dark:to-violet-800/30 shadow-md rounded-2xl p-6 sm:p-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div className="flex-1 text-left space-y-2">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
@@ -344,11 +344,15 @@ const Dashboard: React.FC = () => {
           <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-blue-500/60 to-cyan-400/60" />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Input Windows</div>
+              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">
+                Input Windows
+              </div>
               <div className="text-2xl xs:text-3xl font-bold text-gray-900 dark:text-white mt-1">
                 {realtimeMetrics.input_windows_analyzed.toLocaleString()}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">User input analyzed</div>
+              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                User input analyzed
+              </div>
             </div>
             <div className="shrink-0 rounded-xl p-2 bg-blue-50 ring-1 ring-blue-200 text-blue-600 dark:bg-blue-500/15 dark:ring-blue-400/20 dark:text-blue-400">
               <Activity className="w-5 h-5" />
@@ -361,11 +365,15 @@ const Dashboard: React.FC = () => {
           <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-emerald-500/60 to-green-400/60" />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Response Windows</div>
+              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">
+                Response Windows
+              </div>
               <div className="text-2xl xs:text-3xl font-bold text-gray-900 dark:text-white mt-1">
                 {realtimeMetrics.response_windows_analyzed.toLocaleString()}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">AI response analyzed</div>
+              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                AI response analyzed
+              </div>
             </div>
             <div className="shrink-0 rounded-xl p-2 bg-emerald-50 ring-1 ring-emerald-200 text-emerald-600 dark:bg-emerald-500/15 dark:ring-emerald-400/20 dark:text-emerald-400">
               <Activity className="w-5 h-5" />
@@ -374,41 +382,48 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Stat Pill: Avg Risk Score */}
-        <div className={`relative overflow-hidden rounded-2xl p-4 sm:p-5 lg:p-6 border-2 shadow-soft dark:bg-gradient-to-br dark:from-gray-800/40 dark:via-gray-800/20 dark:to-transparent ring-1 dark:ring-emerald-500/20 ${
-          realtimeMetrics.avg_risk_score >= 0.8
-            ? 'border-red-300'
-            : realtimeMetrics.avg_risk_score >= 0.5
-            ? 'border-yellow-300'
-            : 'border-emerald-600'
-        }`}
+        <div
+          className={`relative overflow-hidden rounded-2xl p-4 sm:p-5 lg:p-6 border-2 shadow-soft dark:bg-gradient-to-br dark:from-gray-800/40 dark:via-gray-800/20 dark:to-transparent ring-1 dark:ring-emerald-500/20 ${
+            realtimeMetrics.avg_risk_score >= 0.8
+              ? "border-red-300"
+              : realtimeMetrics.avg_risk_score >= 0.5
+              ? "border-yellow-300"
+              : "border-emerald-600"
+          }`}
           style={{
             // dynamic ring color based on severity
-            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.03)'
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.03)",
           }}
         >
           {/* Left accent bar matching severity */}
-          <div className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${
-            realtimeMetrics.avg_risk_score >= 0.8
-              ? 'from-red-500/70 to-red-400/70'
-              : realtimeMetrics.avg_risk_score >= 0.5
-              ? 'from-yellow-500/70 to-orange-400/70'
-              : 'from-emerald-500/70 to-green-400/70'
-          }`} />
+          <div
+            className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${
+              realtimeMetrics.avg_risk_score >= 0.8
+                ? "from-red-500/70 to-red-400/70"
+                : realtimeMetrics.avg_risk_score >= 0.5
+                ? "from-yellow-500/70 to-orange-400/70"
+                : "from-emerald-500/70 to-green-400/70"
+            }`}
+          />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Avg Risk Score</div>
+              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">
+                Avg Risk Score
+              </div>
               <div className="text-2xl xs:text-3xl font-bold text-gray-900 dark:text-white mt-1">
                 {realtimeMetrics.avg_risk_score.toFixed(2)}
               </div>
               <div className="text-xs text-gray-500 mt-1">Lower is safer</div>
             </div>
-            <div className={`shrink-0 rounded-xl p-2 ring-1 ${
-              realtimeMetrics.avg_risk_score >= 0.8
-                ? 'bg-red-100 ring-red-200 text-red-600 dark:bg-red-500/15 dark:ring-red-400/20 dark:text-red-400'
-                : realtimeMetrics.avg_risk_score >= 0.5
-                ? 'bg-yellow-100 ring-yellow-200 text-yellow-600 dark:bg-yellow-500/15 dark:ring-yellow-400/20 dark:text-yellow-400'
-                : 'bg-emerald-100 ring-emerald-200 text-emerald-600 dark:bg-emerald-500/15 dark:ring-emerald-400/20 dark:text-emerald-400'
-            }`}>
+            <div
+              className={`shrink-0 rounded-xl p-2 ring-1 ${
+                realtimeMetrics.avg_risk_score >= 0.8
+                  ? "bg-red-100 ring-red-200 text-red-600 dark:bg-red-500/15 dark:ring-red-400/20 dark:text-red-400"
+                  : realtimeMetrics.avg_risk_score >= 0.5
+                  ? "bg-yellow-100 ring-yellow-200 text-yellow-600 dark:bg-yellow-500/15 dark:ring-yellow-400/20 dark:text-yellow-400"
+                  : "bg-emerald-100 ring-emerald-200 text-emerald-600 dark:bg-emerald-500/15 dark:ring-emerald-400/20 dark:text-emerald-400"
+              }`}
+            >
               <TrendingUp className={`w-5 h-5`} />
             </div>
           </div>
@@ -628,9 +643,9 @@ const Dashboard: React.FC = () => {
 
       {/* Enhanced Quick Actions */}
       <motion.div variants={itemVariants}>
-        <Card 
-          shadow="soft" 
-          hover 
+        <Card
+          shadow="soft"
+          hover
           className="overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-800 dark:via-gray-900/50 dark:to-gray-800"
         >
           <CardHeader className="pb-4">
@@ -645,8 +660,8 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 onClick={handleRunTestSuite}
                 size="md"
                 className="w-full justify-center sm:size-lg"
@@ -655,8 +670,8 @@ const Dashboard: React.FC = () => {
                 <span className="hidden sm:inline">Run Full Test Suite</span>
                 <span className="sm:hidden">Run Tests</span>
               </Button>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 onClick={handleViewLiveStream}
                 size="md"
                 className="w-full justify-center sm:size-lg"
@@ -665,8 +680,8 @@ const Dashboard: React.FC = () => {
                 <span className="hidden sm:inline">View Live Stream</span>
                 <span className="sm:hidden">Live Stream</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleExportAuditReport}
                 size="md"
                 className="w-full justify-center sm:size-lg"
@@ -675,8 +690,8 @@ const Dashboard: React.FC = () => {
                 <span className="hidden sm:inline">Export Audit Report</span>
                 <span className="sm:hidden">Export Audit</span>
               </Button>
-              <Button 
-                variant="success" 
+              <Button
+                variant="success"
                 onClick={handleSystemHealthCheck}
                 size="md"
                 className="w-full justify-center sm:size-lg"
@@ -695,7 +710,7 @@ const Dashboard: React.FC = () => {
         variants={itemVariants}
         className="text-center text-sm text-gray-500 dark:text-gray-400"
       >
-        Last updated: {formatters.relative(lastUpdate)} • 
+        Last updated: {formatters.relative(lastUpdate)} •
         {isConnected ? " Connected" : " Disconnected"} • Regulated Edition
         v1.1.0
       </motion.div>
