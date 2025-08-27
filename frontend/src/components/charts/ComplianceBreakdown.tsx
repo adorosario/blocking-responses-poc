@@ -148,7 +148,7 @@ const ComplianceBreakdown: React.FC = () => {
                   tickLine={false}
                   axisLine={false}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                {/* <Tooltip content={<CustomTooltip />} /> */}
                 <Bar 
                   dataKey="count" 
                   fill="url(#patternGradient)"

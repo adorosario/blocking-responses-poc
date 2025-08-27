@@ -332,12 +332,13 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
               <span className="sr-only">Settings</span>
             </motion.button>
 
-            {/* Enhanced User Profile with Accessibility */}
+            {/* User Profile - Non-functional (decorative) */}
             <motion.button
-              whileHover={{ scale: 1.02, y: -1 }}
-              whileTap={{ scale: 0.98 }}
-              aria-label="User profile menu"
-              className="flex items-center space-x-2 sm:space-x-3 px-2 sm:px-3 py-2 sm:py-2.5 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl transition-all duration-200 hover:shadow-md shadow-inner border border-gray-200/50 dark:border-gray-600/50 touch-target focus-ring"
+              aria-label="User profile (inactive)"
+              aria-disabled="true"
+              title="User profile (inactive)"
+              onClick={(e) => e.preventDefault()}
+              className="flex items-center space-x-2 sm:space-x-3 px-2 sm:px-3 py-2 sm:py-2.5 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl transition-all duration-200 shadow-inner border border-gray-200/50 dark:border-gray-600/50 cursor-default select-none"
             >
               <motion.div 
                 whileHover={{ rotate: 360 }}
