@@ -251,7 +251,7 @@ const StreamMonitor: React.FC = () => {
 
       const apiKey = localStorage.getItem('openai_api_key')
 
-      const response = await fetch('http://localhost:8000/chat/stream', {
+      const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
