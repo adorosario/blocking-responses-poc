@@ -8,6 +8,7 @@ dockerfilePath = "Dockerfile"
 [deploy]
 numReplicas = 1
 sleepApplication = false
-restartPolicyType = "never"
+restartPolicyType = "on-failure"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 600
+startCommand = "./start.sh"
