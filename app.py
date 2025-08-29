@@ -2273,8 +2273,25 @@ async def lifespan(app: FastAPI):
     pass
 
 
-# Mount frontend at root (serves index.html for all non-API routes)  
-app.mount("/", StaticFiles(directory="static/frontend", html=True), name="frontend")
+# Mount frontend static assets
+app.mount("/assets", StaticFiles(directory="static/frontend/assets"), name="frontend_assets")  
+app.mount("/static/frontend", StaticFiles(directory="static/frontend"), name="frontend_static")
+
+# Frontend routes (must be last to not override API routes)
+@app.get("/")
+async def serve_frontend():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/frontend/index.html")
+
+@app.get("/{path:path}")  
+async def catch_all(path: str):
+    # If it's an API route that doesn't exist, return 404
+    if path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    
+    # For all other routes, serve the frontend SPA
+    from fastapi.responses import FileResponse
+    return FileResponse("static/frontend/index.html")
 
 
 if __name__ == "__main__":
