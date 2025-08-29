@@ -243,7 +243,6 @@ app.add_middleware(
 
 # Mount static files for frontend
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/", StaticFiles(directory="static/frontend", html=True), name="frontend")
 
 # -------------------- Compliance Policy Configuration --------------------
 COMPLIANCE_POLICY: Dict[str, Any] = {
@@ -2272,6 +2271,10 @@ async def lifespan(app: FastAPI):
 
     # Shutdown (if needed)
     pass
+
+
+# Mount frontend at root (must be last to not override API routes)
+app.mount("/", StaticFiles(directory="static/frontend", html=True), name="frontend")
 
 
 if __name__ == "__main__":
