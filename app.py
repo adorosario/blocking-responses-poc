@@ -1083,7 +1083,7 @@ async def get_audit_logs(
 
 
 # -------------------- Main SSE Endpoint --------------------
-@app.post("/chat/stream")
+@app.post("/api/chat/stream")
 @limiter.limit("10/minute")  # Rate limit: 10 requests per minute per IP
 async def chat_stream_sse(request: Request, chat_req: ChatRequest):
     """SSE endpoint with regulated industry compliance"""
@@ -1496,7 +1496,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
 
 
 # Legacy GET endpoint for backwards compatibility
-@app.get("/chat/stream")
+@app.get("/api/chat/stream")
 async def chat_stream_get(request: Request, q: str):
     """Legacy GET endpoint"""
     chat_req = ChatRequest(
@@ -1511,7 +1511,7 @@ async def chat_stream_get(request: Request, q: str):
 
 
 # -------------------- Additional API Endpoints --------------------
-@app.post("/assess-risk")
+@app.post("/api/assess-risk")
 async def assess_compliance_risk(text: str, region: Optional[str] = None):
     """Comprehensive compliance risk assessment"""
     start_time = monotonic()
@@ -1554,7 +1554,7 @@ async def assess_compliance_risk(text: str, region: Optional[str] = None):
     }
 
 
-@app.post("/compliance/analyze-text")
+@app.post("/api/compliance/analyze-text")
 async def analyze_text_compliance(request: dict):
     """Analyze text for compliance issues - for testing and debugging"""
     text = request.get("text", "")
@@ -1592,7 +1592,7 @@ async def analyze_text_compliance(request: dict):
     }
 
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     """Enhanced health check with dependency status"""
     dependencies = {
@@ -1614,7 +1614,7 @@ async def health_check():
     }
 
 
-@app.get("/compliance/patterns")
+@app.get("/api/compliance/patterns")
 async def get_compliance_patterns():
     """Get available compliance patterns and their weights"""
     return {
@@ -1632,7 +1632,7 @@ async def get_compliance_patterns():
     }
 
 
-@app.get("/compliance/analysis-config")
+@app.get("/api/compliance/analysis-config")
 async def get_analysis_config():
     """Get sliding window analysis configuration"""
     return {
@@ -1658,7 +1658,7 @@ async def get_analysis_config():
     }
 
 
-@app.get("/compliance/config")
+@app.get("/api/compliance/config")
 async def get_compliance_config():
     """Get current compliance configuration"""
     return {
@@ -1673,7 +1673,7 @@ async def get_compliance_config():
     }
 
 
-@app.get("/metrics")
+@app.get("/api/metrics")
 async def get_metrics():
     """Get real-time system metrics"""
     return {
@@ -1695,7 +1695,7 @@ async def get_metrics():
     }
 
 
-@app.get("/config")
+@app.get("/api/config")
 async def get_config():
     """Get general system configuration"""
     return {
@@ -1717,7 +1717,7 @@ async def get_config():
     }
 
 
-@app.get("/compliance/analysis-config")
+@app.get("/api/compliance/analysis-config")
 async def get_analysis_config():
     """Get detailed analysis configuration for frontend controls"""
     return {
@@ -1746,7 +1746,7 @@ async def get_analysis_config():
     }
 
 
-@app.get("/audit-logs")
+@app.get("/api/audit-logs")
 async def get_audit_logs_endpoint(limit: int = 100, event_type: Optional[str] = None):
     """Get audit logs from database"""
     logs = await get_audit_logs(limit=limit, event_type=event_type)
@@ -1759,7 +1759,7 @@ async def get_audit_logs_endpoint(limit: int = 100, event_type: Optional[str] = 
     }
 
 
-@app.post("/metrics/snapshot")
+@app.post("/api/metrics/snapshot")
 async def create_metrics_snapshot():
     """Create a snapshot of current metrics"""
     try:
@@ -1844,7 +1844,7 @@ def update_test_results(
 
 
 # Test Suite Endpoints
-@app.get("/test/suites")
+@app.get("/api/test/suites")
 async def get_test_suites():
     """Get available test suites with dynamic results"""
     return {
@@ -1877,7 +1877,7 @@ async def get_test_suites():
     }
 
 
-@app.post("/test/run")
+@app.post("/api/test/run")
 async def run_test_suite(request: dict):
     """Run specific test suites"""
     import subprocess
@@ -2065,7 +2065,7 @@ async def run_test_suite(request: dict):
         }
 
 
-@app.get("/test/results/{session_id}")
+@app.get("/api/test/results/{session_id}")
 async def get_test_results(session_id: str):
     """Get test results for a specific session"""
     # For now, return the current test status
@@ -2079,7 +2079,7 @@ async def get_test_results(session_id: str):
 
 
 # Enhanced Audit Logs Endpoint
-@app.get("/compliance/audit-logs")
+@app.get("/api/compliance/audit-logs")
 async def get_compliance_audit_logs(
     limit: int = 50,
     offset: int = 0,
@@ -2179,7 +2179,7 @@ async def get_compliance_audit_logs(
         return {"events": [], "total": 0, "has_more": False, "error": str(e)}
 
 
-@app.post("/demo/generate-audit-data")
+@app.post("/api/demo/generate-audit-data")
 async def generate_demo_audit_data():
     """Generate demo audit data for testing"""
     try:
@@ -2273,7 +2273,7 @@ async def lifespan(app: FastAPI):
     pass
 
 
-# Mount frontend at root (must be last to not override API routes)
+# Mount frontend at root (serves index.html for all non-API routes)  
 app.mount("/", StaticFiles(directory="static/frontend", html=True), name="frontend")
 
 
