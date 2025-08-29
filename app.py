@@ -1646,8 +1646,8 @@ async def get_analysis_config():
             "delay_ms": settings.delay_ms,
         },
         "config_ranges": {
-            "analysis_window_size": {"min": 50, "max": 500, "default": 150},
-            "analysis_frequency": {"min": 5, "max": 100, "default": 25},
+            "analysis_window_size": {"min": 50, "max": 500, "default": 200},
+            "analysis_frequency": {"min": 5, "max": 500, "default": 200},
             "risk_threshold": {"min": 0.1, "max": 1.0, "default": 0.7},
         },
         "efficiency_info": {
@@ -1731,9 +1731,9 @@ async def get_analysis_config():
             "delay_ms": settings.delay_ms
         },
         "config_limits": {
-            "analysis_window_size": {"min": 50, "max": 500, "default": 150},
+            "analysis_window_size": {"min": 50, "max": 500, "default": 200},
             "analysis_overlap": {"min": 10, "max": 100, "default": 50},
-            "analysis_frequency": {"min": 5, "max": 100, "default": 25},
+            "analysis_frequency": {"min": 5, "max": 500, "default": 200},
             "risk_threshold": {"min": 0.1, "max": 2.0, "default": 0.7},
             "delay_tokens": {"min": 5, "max": 100, "default": 24},
             "delay_ms": {"min": 50, "max": 2000, "default": 250}
