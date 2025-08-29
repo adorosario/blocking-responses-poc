@@ -1,3 +1,6 @@
+# Railway currently only supports single service per repo
+# For multi-service, deploy frontend separately or use monorepo approach
+
 [build]
 builder = "dockerfile"
 dockerfilePath = "Dockerfile"
@@ -6,23 +9,5 @@ dockerfilePath = "Dockerfile"
 numReplicas = 1
 sleepApplication = false
 restartPolicyType = "never"
-
-[[services]]
-name = "api"
-source = "."
-dockerfile = "Dockerfile"
-
-[services.healthcheck]
-path = "/health"
-timeout = 300
-interval = 300
-
-[[services]]
-name = "frontend"  
-source = "frontend"
-dockerfile = "frontend/Dockerfile"
-
-[services.healthcheck]
-path = "/"
-timeout = 300
-interval = 300
+healthcheckPath = "/health"
+healthcheckTimeout = 300
