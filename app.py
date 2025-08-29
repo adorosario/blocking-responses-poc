@@ -82,16 +82,16 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # SSE and buffering settings
-    delay_tokens: int = 24
-    delay_ms: int = 250
+    delay_tokens: int = 20
+    delay_ms: int = 50
 
     # NEW: Sliding Window Analysis Settings
     analysis_window_size: int = 200  # tokens to analyze at once for compliance
     analysis_overlap: int = 50       # tokens overlap between analysis windows
-    analysis_frequency: int = 200    # analyze every N tokens (instead of every token)
+    analysis_frequency: int = 100    # analyze every N tokens (instead of every token)
     
     # Compliance thresholds
-    risk_threshold: float = 0.7  # Fixed default to match env file
+    risk_threshold: float = 1.0  # Fixed default to match env file
     presidio_confidence_threshold: float = 0.85  # Increased to reduce false positives
     judge_threshold: float = 0.8
     enable_judge: bool = True
@@ -104,6 +104,18 @@ class Settings(BaseSettings):
     enable_audit_logging: bool = True
     audit_retention_days: int = 30
     hash_sensitive_data: bool = True
+
+    # Performance and system settings
+    sse_queue_maxsize: int = 200
+    heartbeat_interval: int = 15
+    metrics_deque_size: int = 1000
+    analysis_history_limit: int = 10
+    max_window_text_chars: int = 8000
+    buffer_analysis_frequency: int = 50  # Analyze full buffer every N tokens (not every flush)
+
+    # Database and rate limiting
+    database_url: str = "sqlite+aiosqlite:///./compliance_audit.db"
+    rate_limit: str = "10/minute"
 
     # CORS and security
     cors_origins: str = "*"
@@ -157,7 +169,7 @@ class MetricsSnapshot(Base):  # type: ignore
 
 
 # Database configuration
-DATABASE_URL = "sqlite+aiosqlite:///./compliance_audit.db"
+DATABASE_URL = settings.database_url
 engine = create_async_engine(DATABASE_URL, echo=False)
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
@@ -419,12 +431,18 @@ class RegulatedPatternDetector:
                             "credit_card: Valid credit card number detected"
                         )
                         break
-            elif pattern.search(text):
-                weight_key = pattern_name.replace("_candidate", "").replace(
-                    "_context", "_hint"
-                )
-                score += weights.get(weight_key, 0.5)
-                triggered_rules.append(f"{pattern_name}: Pattern detected")
+            else:
+                match = pattern.search(text)
+                if match:
+                    matched_text = match.group(0)
+                    match_start = match.start()
+                    match_end = match.end()
+                    weight_key = pattern_name.replace("_candidate", "").replace(
+                        "_context", "_hint"
+                    )
+                    weight = weights.get(weight_key, 0.5)
+                    score += weight
+                    triggered_rules.append(f"{pattern_name}: '{matched_text}' at pos {match_start}-{match_end} (weight: {weight})")
 
         # Create hash of sensitive snippet if needed
         snippet_hash = None
@@ -485,14 +503,14 @@ class MetricsTracker:
         # Update max risk score
         self.max_risk_score = max(self.max_risk_score, risk_score)
 
-        # Keep last 1000 risk scores for averaging
+        # Keep last N risk scores for averaging
         self.risk_scores.append(risk_score)
-        if len(self.risk_scores) > 1000:
+        if len(self.risk_scores) > settings.metrics_deque_size:
             self.risk_scores.pop(0)
 
-        # Keep last 1000 delay times for averaging
+        # Keep last N delay times for averaging
         self.delay_times.append(delay_ms)
-        if len(self.delay_times) > 1000:
+        if len(self.delay_times) > settings.metrics_deque_size:
             self.delay_times.pop(0)
 
     def record_input_window(self):
@@ -694,14 +712,19 @@ class SlidingWindowAnalyzer:
         return tokens_since_last >= self.frequency
     
     def extract_analysis_window(self, full_text: str, current_position: int) -> tuple[str, int, int]:
-        """Extract the analysis window from full text"""
+        """Extract the analysis window from full text - show actual window_size tokens"""
         if TIKTOKEN_AVAILABLE and enc:
             tokens = enc.encode(full_text)
             total_tokens = len(tokens)
             
-            # Calculate window boundaries
-            window_start = max(0, current_position - self.window_size + self.overlap_size)
-            window_end = min(total_tokens, current_position + self.overlap_size)
+            # Calculate window boundaries: extract window_size tokens ending at current_position
+            window_start = max(0, current_position - self.window_size)
+            window_end = min(total_tokens, current_position)
+            
+            # If we don't have enough tokens yet, take what we have from the beginning
+            if window_end - window_start < self.window_size and current_position < self.window_size:
+                window_start = 0
+                window_end = min(total_tokens, self.window_size)
             
             # Extract window tokens and convert back to text
             window_tokens = tokens[window_start:window_end]
@@ -709,12 +732,21 @@ class SlidingWindowAnalyzer:
             
             return window_text, window_start, window_end
         else:
-            # Fallback: character-based estimation
+            # Fallback: character-based estimation (assume 4 chars per token)
             chars_per_token = 4
-            char_start = max(0, (current_position - self.window_size + self.overlap_size) * chars_per_token)
-            char_end = min(len(full_text), (current_position + self.overlap_size) * chars_per_token)
+            window_start_char = max(0, (current_position - self.window_size) * chars_per_token)
+            window_end_char = min(len(full_text), current_position * chars_per_token)
             
-            return full_text[char_start:char_end], char_start // chars_per_token, char_end // chars_per_token
+            # If we don't have enough text yet, take what we have from the beginning
+            if window_end_char - window_start_char < self.window_size * chars_per_token and current_position < self.window_size:
+                window_start_char = 0
+                window_end_char = min(len(full_text), self.window_size * chars_per_token)
+            
+            window_text = full_text[window_start_char:window_end_char]
+            window_start = window_start_char // chars_per_token
+            window_end = window_end_char // chars_per_token
+            
+            return window_text, window_start, window_end
     
     def analyze_window(self, window_text: str, window_start: int, window_end: int, region: Optional[str] = None) -> Dict[str, Any]:
         """Analyze a specific window for compliance violations"""
@@ -723,6 +755,18 @@ class SlidingWindowAnalyzer:
         
         # Presidio-based analysis
         presidio_score, presidio_entities = presidio_detector.analyze_text(window_text)
+        
+        # Combine triggered rules from both pattern and Presidio detection
+        all_triggered_rules = list(compliance_result.triggered_rules)
+        
+        # Add detailed Presidio entities to triggered rules
+        for entity in presidio_entities:
+            presidio_rule = (
+                f"Presidio {entity['entity_type']}: '{entity['text']}' "
+                f"at pos {entity['start']}-{entity['end']} "
+                f"(confidence: {entity['score']:.2f}, weight: {COMPLIANCE_POLICY['weights']['presidio']:.2f})"
+            )
+            all_triggered_rules.append(presidio_rule)
         
         # Combine scores
         total_score = compliance_result.score + presidio_score
@@ -735,7 +779,7 @@ class SlidingWindowAnalyzer:
             "pattern_score": compliance_result.score,
             "presidio_score": presidio_score,
             "total_score": total_score,
-            "triggered_rules": compliance_result.triggered_rules,
+            "triggered_rules": all_triggered_rules,
             "presidio_entities": presidio_entities,
             "blocked": total_score >= settings.risk_threshold,
             "timestamp": datetime.utcnow().isoformat(),
@@ -747,9 +791,9 @@ class SlidingWindowAnalyzer:
         self.cumulative_risk = max(self.cumulative_risk, total_score)
         self.analysis_history.append(analysis_result)
         
-        # Keep only last 10 analyses for memory efficiency
-        if len(self.analysis_history) > 10:
-            self.analysis_history = self.analysis_history[-10:]
+        # Keep only last N analyses for memory efficiency
+        if len(self.analysis_history) > settings.analysis_history_limit:
+            self.analysis_history = self.analysis_history[-settings.analysis_history_limit:]
             
         return analysis_result
     
@@ -806,8 +850,9 @@ def sse_event(data: str, event: Optional[str] = None, id: Optional[str] = None) 
     return "\n".join(parts) + "\n"
 
 
-async def heartbeat_generator(queue: asyncio.Queue, interval: int = 15):
+async def heartbeat_generator(queue: asyncio.Queue, interval: int = None):
     """Generate heartbeat events to keep connection alive"""
+    interval = interval or settings.heartbeat_interval
     while True:
         try:
             await asyncio.sleep(interval)
@@ -1084,7 +1129,7 @@ async def get_audit_logs(
 
 # -------------------- Main SSE Endpoint --------------------
 @app.post("/api/chat/stream")
-@limiter.limit("10/minute")  # Rate limit: 10 requests per minute per IP
+@limiter.limit(settings.rate_limit)  # Rate limit: configurable requests per minute per IP
 async def chat_stream_sse(request: Request, chat_req: ChatRequest):
     """SSE endpoint with regulated industry compliance"""
 
@@ -1119,7 +1164,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
     logger.info(f"User input analysis (audit only) - Score: {user_total_score:.2f}, Rules: {user_compliance_result.triggered_rules}")
 
     async def event_generator() -> AsyncIterator[bytes]:
-        queue: asyncio.Queue[str] = asyncio.Queue(maxsize=200)
+        queue: asyncio.Queue[str] = asyncio.Queue(maxsize=settings.sse_queue_maxsize)
         heartbeat_task = asyncio.create_task(heartbeat_generator(queue))
 
         vetoed = False
@@ -1128,6 +1173,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
         token_buffer: deque = deque()
         window_text = ""
         event_id = 0
+        last_buffer_analysis_tokens = 0  # Track when we last did full buffer analysis
 
         # Generate session ID for audit tracking
         session_id = generate_session_id()
@@ -1174,7 +1220,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
 
         async def flush_tokens(force: bool = False):
             """Flush tokens from buffer while maintaining look-ahead window"""
-            nonlocal last_flush, vetoed
+            nonlocal last_flush, vetoed, last_buffer_analysis_tokens
             
             # If already vetoed, don't process anymore
             if vetoed:
@@ -1204,14 +1250,33 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                         else:
                             break
 
-            # CRITICAL FIX: Analyze the ENTIRE buffer including look-ahead window
-            # This ensures we catch sensitive content before ANY of it is shown
-            full_buffer_text = "".join(list(token_buffer))
+            # OPTIMIZED: Only analyze full buffer periodically (not every flush)
+            current_total_tokens = sum(token_count(piece) for piece in token_buffer)
+            should_analyze_buffer = (
+                force or 
+                current_total_tokens - last_buffer_analysis_tokens >= settings.buffer_analysis_frequency
+            )
+            
+            if should_analyze_buffer:
+                # Analyze the ENTIRE buffer for compliance violations  
+                full_buffer_text = "".join(list(token_buffer))
+                last_buffer_analysis_tokens = current_total_tokens
             
             # Analyze the FULL buffer for compliance violations
-            if full_buffer_text and not vetoed:  # Check vetoed status before analysis
+            if should_analyze_buffer and full_buffer_text and not vetoed:
                 buffer_compliance_result = pattern_detector.assess_compliance_risk(full_buffer_text, chat_req.region)
                 buffer_presidio_score, buffer_presidio_entities = presidio_detector.analyze_text(full_buffer_text)
+                
+                # Combine triggered rules from both pattern and Presidio detection
+                buffer_triggered_rules = list(buffer_compliance_result.triggered_rules)
+                for entity in buffer_presidio_entities:
+                    presidio_rule = (
+                        f"Presidio {entity['entity_type']}: '{entity['text']}' "
+                        f"at pos {entity['start']}-{entity['end']} "
+                        f"(confidence: {entity['score']:.2f}, weight: {COMPLIANCE_POLICY['weights']['presidio']:.2f})"
+                    )
+                    buffer_triggered_rules.append(presidio_rule)
+                
                 buffer_total_score = buffer_compliance_result.score + buffer_presidio_score
                 
                 # If the FULL buffer contains violations, block immediately (ONLY ONCE)
@@ -1229,7 +1294,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                     # Update tracking with the violation details
                     nonlocal max_ai_output_risk_score, all_ai_triggered_rules
                     max_ai_output_risk_score = max(max_ai_output_risk_score, buffer_total_score)
-                    all_ai_triggered_rules.extend(buffer_compliance_result.triggered_rules)
+                    all_ai_triggered_rules.extend(buffer_triggered_rules)
                     
                     # Record metrics for blocked request
                     elapsed_ms = (monotonic() - start_time) * 1000
@@ -1238,7 +1303,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                     )
                     
                     # Record pattern detections for metrics
-                    for rule in buffer_compliance_result.triggered_rules:
+                    for rule in buffer_triggered_rules:
                         pattern_name = rule.split(":")[0].strip()
                         metrics.record_pattern_detection(pattern_name)
                     
@@ -1248,7 +1313,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                         user_input_hash=user_input_hash,
                         blocked_content_hash=hashlib.sha256(full_buffer_text.encode()).hexdigest()[:16],
                         risk_score=buffer_total_score,
-                        triggered_rules=buffer_compliance_result.triggered_rules,
+                        triggered_rules=buffer_triggered_rules,
                         timestamp=datetime.utcnow(),
                         session_id=session_id,
                     )
@@ -1271,11 +1336,22 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                 # Analyze AI output for compliance violations
                 ai_compliance_result = pattern_detector.assess_compliance_risk(combined_text, chat_req.region)
                 ai_presidio_score, ai_presidio_entities = presidio_detector.analyze_text(combined_text)
+                
+                # Combine triggered rules from both pattern and Presidio detection
+                ai_triggered_rules = list(ai_compliance_result.triggered_rules)
+                for entity in ai_presidio_entities:
+                    presidio_rule = (
+                        f"Presidio {entity['entity_type']}: '{entity['text']}' "
+                        f"at pos {entity['start']}-{entity['end']} "
+                        f"(confidence: {entity['score']:.2f}, weight: {COMPLIANCE_POLICY['weights']['presidio']:.2f})"
+                    )
+                    ai_triggered_rules.append(presidio_rule)
+                
                 ai_total_score = ai_compliance_result.score + ai_presidio_score
                 
                 # Update tracking (already declared nonlocal above)
                 max_ai_output_risk_score = max(max_ai_output_risk_score, ai_total_score)
-                all_ai_triggered_rules.extend(ai_compliance_result.triggered_rules)
+                all_ai_triggered_rules.extend(ai_triggered_rules)
                 
                 # Final check before emission (only if not already vetoed)
                 if ai_total_score >= risk_threshold and not vetoed:
@@ -1296,7 +1372,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                     )
                     
                     # Record pattern detections for metrics
-                    for rule in ai_compliance_result.triggered_rules:
+                    for rule in ai_triggered_rules:
                         pattern_name = rule.split(":")[0].strip()
                         metrics.record_pattern_detection(pattern_name)
                     
@@ -1306,7 +1382,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                         user_input_hash=user_input_hash,
                         blocked_content_hash=hashlib.sha256(combined_text.encode()).hexdigest()[:16],
                         risk_score=ai_total_score,
-                        triggered_rules=ai_compliance_result.triggered_rules,
+                        triggered_rules=ai_triggered_rules,
                         timestamp=datetime.utcnow(),
                         session_id=session_id,
                     )
@@ -1345,7 +1421,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
 
                     # Add piece to buffer
                     token_buffer.append(piece)
-                    window_text = (window_text + piece)[-8000:]  # Keep for display purposes
+                    window_text = (window_text + piece)[-settings.max_window_text_chars:]  # Keep for display purposes
                     response_text += piece
 
                     # Create response windows for analysis based on configured frequency
@@ -1359,8 +1435,25 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                         
                         # Analyze recent AI output for compliance display
                         analysis_window_size = chat_req.analysis_window_size or settings.analysis_window_size
-                        window_start = max(0, response_tokens - analysis_window_size)
-                        recent_response = response_text[-analysis_window_size:] if len(response_text) > analysis_window_size else response_text
+                        
+                        # Extract the actual window using proper tokenization
+                        if TIKTOKEN_AVAILABLE and enc:
+                            response_tokens_list = enc.encode(response_text)
+                            total_response_tokens = len(response_tokens_list)
+                            window_start = max(0, total_response_tokens - analysis_window_size)
+                            window_end = total_response_tokens
+                            window_tokens = response_tokens_list[window_start:window_end]
+                            recent_response = enc.decode(window_tokens)
+                            actual_window_size = len(window_tokens)
+                        else:
+                            # Fallback: word-based approximation
+                            response_words = response_text.split()
+                            total_response_words = len(response_words)
+                            window_start = max(0, total_response_words - analysis_window_size)
+                            window_end = total_response_words
+                            window_words = response_words[window_start:window_end]
+                            recent_response = " ".join(window_words)
+                            actual_window_size = len(window_words)
                         
                         # Actually analyze the AI output window
                         window_compliance_result = pattern_detector.assess_compliance_risk(recent_response, chat_req.region)
@@ -1371,9 +1464,9 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                             json.dumps({
                                 "window_text": recent_response,
                                 "window_start": window_start,
-                                "window_end": response_tokens,
-                                "window_size": min(analysis_window_size, response_tokens),
-                                "analysis_position": response_tokens,
+                                "window_end": window_end,
+                                "window_size": actual_window_size,
+                                "analysis_position": window_end,
                                 "pattern_score": window_compliance_result.score,
                                 "presidio_score": window_presidio_score,
                                 "total_score": window_total_score,
@@ -1572,6 +1665,18 @@ async def analyze_text_compliance(request: dict):
     # Presidio-based assessment
     presidio_score, presidio_entities = presidio_detector.analyze_text(text)
 
+    # Combine triggered rules from both pattern and Presidio detection
+    all_triggered_rules = list(compliance_result.triggered_rules)
+    
+    # Add detailed Presidio entities to triggered rules
+    for entity in presidio_entities:
+        presidio_rule = (
+            f"Presidio {entity['entity_type']}: '{entity['text']}' "
+            f"at pos {entity['start']}-{entity['end']} "
+            f"(confidence: {entity['score']:.2f}, weight: {COMPLIANCE_POLICY['weights']['presidio']:.2f})"
+        )
+        all_triggered_rules.append(presidio_rule)
+
     # Combine results
     total_score = compliance_result.score + presidio_score
     is_blocked = total_score >= settings.risk_threshold
@@ -1584,7 +1689,7 @@ async def analyze_text_compliance(request: dict):
         "blocked": is_blocked,
         "pattern_score": compliance_result.score,
         "presidio_score": presidio_score,
-        "triggered_rules": compliance_result.triggered_rules,
+        "triggered_rules": all_triggered_rules,
         "presidio_entities": presidio_entities,
         "compliance_region": region,
         "snippet_hash": compliance_result.snippet_hash,
@@ -2210,6 +2315,16 @@ async def generate_demo_audit_data():
                 demo["text"]
             )
 
+            # Combine triggered rules from both pattern and Presidio detection
+            demo_triggered_rules = list(compliance_result.triggered_rules)
+            for entity in presidio_entities:
+                presidio_rule = (
+                    f"Presidio {entity['entity_type']}: '{entity['text']}' "
+                    f"at pos {entity['start']}-{entity['end']} "
+                    f"(confidence: {entity['score']:.2f}, weight: {COMPLIANCE_POLICY['weights']['presidio']:.2f})"
+                )
+                demo_triggered_rules.append(presidio_rule)
+
             total_score = compliance_result.score + presidio_score
             is_blocked = total_score >= settings.risk_threshold
 
@@ -2222,7 +2337,7 @@ async def generate_demo_audit_data():
                     compliance_result.snippet_hash if is_blocked else None
                 ),
                 risk_score=total_score,
-                triggered_rules=compliance_result.triggered_rules,
+                triggered_rules=demo_triggered_rules,
                 session_id=f"demo_session_{int(datetime.utcnow().timestamp())}",
             )
 

@@ -798,8 +798,15 @@ const StreamMonitor: React.FC = () => {
                                     <div className="font-bold">Window {idx + 1}</div>
                                     <div>Risk: {analysis.total_score.toFixed(3)}</div>
                                     <div>Tokens: {analysis.window_start}-{analysis.window_end}</div>
-                                        <div className="mt-1 text-xs opacity-75 line-clamp-2">
-                                      "{analysis.window_text.substring(0, 50)}..."
+                                        <div className="mt-1 text-xs opacity-75">
+                                          <details className="cursor-pointer">
+                                            <summary className="line-clamp-2">
+                                              "{analysis.window_text.substring(0, 80)}..."
+                                            </summary>
+                                            <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700 rounded text-xs font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                              {analysis.window_text}
+                                            </div>
+                                          </details>
                                         </div>
                                       </div>
                                     ))}
@@ -1139,8 +1146,15 @@ const StreamMonitor: React.FC = () => {
                 <div className="text-xs text-purple-700 dark:text-purple-300 mb-2 font-mono">
                   Window {responseWindows[responseWindows.length - 1]?.window_number || responseWindows.length}
                 </div>
-                <div className="text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-3 rounded border font-mono text-xs leading-relaxed">
-                  "{responseWindows[responseWindows.length - 1]?.window_text.substring(0, 120)}..."
+                <div className="text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-3 rounded border">
+                  <details className="cursor-pointer">
+                    <summary className="font-mono text-xs leading-relaxed line-clamp-3">
+                      "{responseWindows[responseWindows.length - 1]?.window_text.substring(0, 150)}..."
+                    </summary>
+                    <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded font-mono text-xs whitespace-pre-wrap max-h-40 overflow-y-auto">
+                      {responseWindows[responseWindows.length - 1]?.window_text}
+                    </div>
+                  </details>
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
                   <div className="text-center">
@@ -1237,18 +1251,39 @@ const StreamMonitor: React.FC = () => {
                       <RiskBadge score={analysis.total_score} />
                     </div>
                     
-                    <div className="text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded font-mono mb-2">
-                      "{analysis.window_text.substring(0, 80)}..."
+                    <div className="text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded mb-2">
+                      <details className="cursor-pointer">
+                        <summary className="font-mono line-clamp-2">
+                          "{analysis.window_text.substring(0, 100)}..."
+                        </summary>
+                        <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-600 rounded font-mono text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
+                          {analysis.window_text}
+                        </div>
+                      </details>
                     </div>
                     
                     {analysis.triggered_rules.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {analysis.triggered_rules.slice(0, 2).map((rule, idx) => (
-                          <Badge key={idx} variant="warning" size="sm">{getPatternDisplayName(rule)}</Badge>
-                        ))}
-                        {analysis.triggered_rules.length > 2 && (
-                          <Badge variant="outline" size="sm">+{analysis.triggered_rules.length - 2}</Badge>
-                        )}
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold text-red-600 dark:text-red-400">Compliance Issues:</div>
+                        <details className="cursor-pointer">
+                          <summary className="flex flex-wrap gap-1">
+                            {analysis.triggered_rules.slice(0, 2).map((rule, idx) => (
+                              <Badge key={idx} variant="warning" size="sm">{getPatternDisplayName(rule)}</Badge>
+                            ))}
+                            {analysis.triggered_rules.length > 2 && (
+                              <Badge variant="outline" size="sm">+{analysis.triggered_rules.length - 2}</Badge>
+                            )}
+                            <span className="text-xs text-gray-500 ml-2">Click for details</span>
+                          </summary>
+                          <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
+                            <div className="text-xs font-semibold mb-2">Detection Details:</div>
+                            {analysis.triggered_rules.map((rule, idx) => (
+                              <div key={idx} className="text-xs font-mono mb-1 p-2 bg-white dark:bg-gray-800 rounded border">
+                                {rule}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
                       </div>
                     )}
                   </motion.div>

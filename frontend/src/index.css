@@ -367,6 +367,31 @@
   }
 }
 
+/* Details element styling for better interaction */
+details {
+  cursor: pointer;
+}
+
+details summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details summary:before {
+  content: '▶';
+  display: inline-block;
+  margin-right: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+details[open] summary:before {
+  transform: rotate(90deg);
+}
+
 /* Highlight.js theme overrides for better integration */
 .hljs {
   @apply !bg-transparent;

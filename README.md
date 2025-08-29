@@ -42,7 +42,10 @@ cp .env.example .env
 ### 2. Start with Docker Compose
 
 ```bash
-# Basic setup (API + Web Interface)
+# Quick build and start (recommended for development)
+docker compose down && docker compose up --build api --remove-orphans -d
+
+# Or basic startup (no rebuild)
 docker-compose up -d
 
 # Or use the convenience script
@@ -222,7 +225,10 @@ make health      # Check service health
 ### Using Docker Compose Directly
 
 ```bash
-# Start services
+# Quick development build (recommended)
+docker compose down && docker compose up --build api --remove-orphans -d
+
+# Start services (no rebuild)
 docker-compose up -d
 
 # View logs
@@ -301,7 +307,7 @@ OPENAI_API_KEY=your_key_here
 DEFAULT_MODEL=gpt-4o-mini        # Primary model
 JUDGE_MODEL=gpt-4o-mini          # Secondary judge model
 DELAY_TOKENS=20                  # Buffer size in tokens
-DELAY_MS=250                     # Max flush delay (ms)
+DELAY_MS=50                      # Max flush delay (ms)
 RISK_THRESHOLD=1.0               # Blocking threshold
 JUDGE_THRESHOLD=0.8              # LLM judge activation
 ENABLE_JUDGE=true                # Enable secondary assessment
@@ -746,8 +752,8 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 # One-time setup
 cp .env.example .env  # Add your OpenAI API key
 
-# Start everything
-./docker-run.sh basic
+# Quick build and start
+docker compose down && docker compose up --build api --remove-orphans -d
 
 # Access services
 open http://localhost:3000         # Web interface  
