@@ -86,9 +86,9 @@ class Settings(BaseSettings):
     delay_ms: int = 250
 
     # NEW: Sliding Window Analysis Settings
-    analysis_window_size: int = 150  # tokens to analyze at once for compliance
+    analysis_window_size: int = 200  # tokens to analyze at once for compliance
     analysis_overlap: int = 50       # tokens overlap between analysis windows
-    analysis_frequency: int = 25     # analyze every N tokens (instead of every token)
+    analysis_frequency: int = 200    # analyze every N tokens (instead of every token)
     
     # Compliance thresholds
     risk_threshold: float = 0.7  # Fixed default to match env file
@@ -194,7 +194,7 @@ class ChatRequest(BaseModel):
     )
     # Dynamic analysis configuration
     analysis_window_size: Optional[int] = Field(None, ge=50, le=500, description="Token window size for analysis")
-    analysis_frequency: Optional[int] = Field(None, ge=5, le=100, description="Analyze every N tokens")
+    analysis_frequency: Optional[int] = Field(None, ge=5, le=500, description="Analyze every N tokens")
 
 
 class ComplianceResult(BaseModel):

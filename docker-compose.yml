@@ -1,10 +1,10 @@
 services:
-  # Main API service
+  # Main API service (combined with frontend)
   api:
     build: .
     container_name: blocking-responses-api
     ports:
-      - "8000:8000"
+      - "3000:8000"
     env_file:
       - .env
     environment:
@@ -25,7 +25,7 @@ services:
       - PRESIDIO_CONFIDENCE_THRESHOLD=${PRESIDIO_CONFIDENCE_THRESHOLD:-0.6}
       - PORT=${PORT:-8000}
       - HOST=${HOST:-0.0.0.0}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
     volumes:
       # Mount source for development (comment out for production)
       - ./app.py:/app/app.py
@@ -38,22 +38,22 @@ services:
       retries: 3
       start_period: 40s
 
-  # Modern React frontend
-  frontend:
-    build: ./frontend
-    container_name: compliance-dashboard-frontend
-    ports:
-      - "3000:80"
-      - "3443:443"  # For future SSL setup
-    depends_on:
-      api:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # Modern React frontend (now served from API container)
+  # frontend:
+  #   build: ./frontend
+  #   container_name: compliance-dashboard-frontend
+  #   ports:
+  #     - "3000:80"
+  #     - "3443:443"  # For future SSL setup
+  #   depends_on:
+  #     api:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
 
   # Legacy web interface (static files)
   web:

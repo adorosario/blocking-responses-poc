@@ -5,7 +5,6 @@ import {
   Info, 
   AlertTriangle, 
   Shield, 
-  Clock, 
   BarChart3,
   RefreshCw,
   MessageSquare,
@@ -16,11 +15,8 @@ import {
   Hash,
   Settings,
   ChevronDown,
-  ChevronUp,
-  Activity,
   Zap,
   Target,
-  Maximize2,
   X
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -30,6 +26,33 @@ import { useConnection } from '@/utils/useConnection'
 import { useNotifications } from '@/components/ui/Notifications'
 import { useDashboardStore } from '@/stores/dashboard'
 import { apiClient } from '@/utils/api'
+
+// User-friendly pattern name mappings
+const PATTERN_NAMES: { [key: string]: string } = {
+  'email': '📧 Email Address',
+  'phone': '📱 Phone Number', 
+  'ssn': '🆔 Social Security Number',
+  'credit_card': '💳 Credit Card',
+  'password': '🔑 Password',
+  'api_key': '🗝️ API Key',
+  'phi_context': '🏥 Health Information',
+  'medical_record': '📋 Medical Record',
+  'pci_context': '💰 Payment Information',
+  'pii_context': '👤 Personal Information',
+  'person_name': '👤 Person Name',
+  'address': '🏠 Address',
+  'bank_account': '🏦 Bank Account',
+  'crypto_address': '₿ Crypto Address',
+  'government_id': '🆔 Government ID',
+  'us_passport': '📘 US Passport',
+  'us_driver_license': '📄 Driver License',
+  'iban': '🏦 IBAN Code',
+  'routing_number': '🏦 Routing Number'
+}
+
+const getPatternDisplayName = (patternCode: string): string => {
+  return PATTERN_NAMES[patternCode] || `⚠️ ${patternCode.replace('_', ' ').toUpperCase()}`
+}
 
 interface Message {
   id: string
@@ -46,24 +69,6 @@ interface Message {
   blockReason?: string
 }
 
-interface StreamToken {
-  text: string
-  risk: number
-  timestamp: string
-  blocked?: boolean
-  entities?: string[]
-  patterns?: string[]
-}
-
-interface StreamEvent {
-  id: number
-  type: string
-  timestamp: string
-  description: string
-  risk?: number
-  entities?: string[]
-  patterns?: string[]
-}
 
 interface WindowAnalysis {
   window_text: string
@@ -92,7 +97,7 @@ interface AnalysisConfig {
 
 const StreamMonitor: React.FC = () => {
   // Global metrics from dashboard store
-  const { realtimeMetrics, updateMetrics } = useDashboardStore()
+  const { updateMetrics } = useDashboardStore()
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([])
@@ -103,8 +108,6 @@ const StreamMonitor: React.FC = () => {
   
 
   // Analysis state
-  const [tokens, setTokens] = useState<StreamToken[]>([])
-  const [events, setEvents] = useState<StreamEvent[]>([])
   const [riskScores, setRiskScores] = useState<number[]>([])
   const [inputWindowAnalyses, setInputWindowAnalyses] = useState<WindowAnalysis[]>([])
   const [responseWindows, setResponseWindows] = useState<WindowAnalysis[]>([])
@@ -112,9 +115,9 @@ const StreamMonitor: React.FC = () => {
 
   // Config state
   const [analysisConfig, setAnalysisConfig] = useState<AnalysisConfig>({
-    analysis_window_size: 150,
+    analysis_window_size: 200,
     analysis_overlap: 50,
-    analysis_frequency: 25,
+    analysis_frequency: 200,
     risk_threshold: 0.7,
     delay_tokens: 24,
     delay_ms: 250
@@ -125,15 +128,14 @@ const StreamMonitor: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false)
   const [showDebugPanel, setShowDebugPanel] = useState(false)
   const [showDecisionTimelineModal, setShowDecisionTimelineModal] = useState(false)
-  const [showResponseStreamModal, setShowResponseStreamModal] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'analyzing' | 'streaming' | 'complete'>('idle')
   const [expandedMessage, setExpandedMessage] = useState<string | null>(null)
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
 
   // Temporary config state for editing
   const [tempConfig, setTempConfig] = useState({
-    analysis_window_size: '150',
-    analysis_frequency: '25',
+    analysis_window_size: '200',
+    analysis_frequency: '200',
     risk_threshold: '0.7'
   })
   const [configErrors, setConfigErrors] = useState({
@@ -235,8 +237,6 @@ const StreamMonitor: React.FC = () => {
     setCurrentMessageId(messageId)
     setCurrentMessage('')
     setIsStreaming(true)
-    setTokens([])
-    setEvents([])
     setRiskScores([])
     setInputWindowAnalyses([])
     setResponseWindows([])
@@ -307,15 +307,6 @@ const StreamMonitor: React.FC = () => {
                 
                 accumulatedContent += data.content
                 
-                const timestamp = new Date().toLocaleTimeString() + '.' + Date.now().toString().slice(-3)
-                setTokens(prev => [...prev, {
-                    text: data.content,
-                    risk: 0.0,
-                    timestamp,
-                    entities: [],
-                  patterns: []
-                }])
-                
                 setMessages(prev => prev.map(msg => 
                   msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
                 ))
@@ -333,16 +324,6 @@ const StreamMonitor: React.FC = () => {
                 setInputWindowAnalyses(prev => [...prev, windowAnalysis])
                 setRiskScores(prev => [...prev, analysisData.total_score])
                 setCurrentRiskScore(analysisData.total_score)
-                
-                setEvents(prev => [...prev, {
-                    id: prev.length + 1,
-                  type: 'input_window_analysis',
-                    timestamp,
-                  description: `Analyzed input window ${prev.filter(e => e.type === 'input_window_analysis').length + 1} (tokens ${analysisData.window_start}-${analysisData.window_end}): Risk ${analysisData.total_score.toFixed(3)}`,
-                    risk: analysisData.total_score,
-                  entities: analysisData.presidio_entities?.map((e: any) => e.entity_type),
-                  patterns: analysisData.triggered_rules
-                }])
               }
 
               // Handle response window analysis events
@@ -357,42 +338,12 @@ const StreamMonitor: React.FC = () => {
                 setResponseWindows(prev => [...prev, windowAnalysis])
                 setRiskScores(prev => [...prev, analysisData.total_score])
                 setCurrentRiskScore(Math.max(currentRiskScore, analysisData.total_score))
-                
-                setEvents(prev => [...prev, {
-                    id: prev.length + 1,
-                  type: 'response_window_analysis',
-                    timestamp,
-                  description: `Analyzed response window ${analysisData.window_number} (tokens ${analysisData.window_start}-${analysisData.window_end}): Risk ${analysisData.total_score.toFixed(3)}`,
-                    risk: analysisData.total_score,
-                  entities: analysisData.presidio_entities?.map((e: any) => e.entity_type),
-                  patterns: analysisData.triggered_rules
-                }])
               }
               
-              if (data.type === 'risk_alert') {
-                const timestamp = new Date().toLocaleTimeString() + '.' + Date.now().toString().slice(-3)
-                setEvents(prev => [...prev, {
-                    id: prev.length + 1,
-                  type: 'risk_alert',
-                    timestamp,
-                    description: `⚠️ HIGH RISK DETECTED: ${data.content}`,
-                    risk: data.risk_score,
-                    entities: data.entities || [],
-                  patterns: data.patterns || []
-                }])
-              }
               
               if (data.type === 'blocked') {
                 console.log('Blocked event data:', data)
-                const timestamp = new Date().toLocaleTimeString() + '.' + Date.now().toString().slice(-3)
                 const blockReason = data.content || data.reason || 'Content violated compliance policies'
-                setEvents(prev => [...prev, {
-                    id: prev.length + 1,
-                  type: 'blocked',
-                    timestamp,
-                    description: `🚫 STREAM BLOCKED: ${blockReason}`,
-                  risk: data.risk_score
-                }])
 
                 // Update the message to show it was blocked
                 setMessages(prev => prev.map(msg => 
@@ -413,15 +364,6 @@ const StreamMonitor: React.FC = () => {
               }
               
               if (data.type === 'completed') {
-                const timestamp = new Date().toLocaleTimeString() + '.' + Date.now().toString().slice(-3)
-                
-                setEvents(prev => [...prev, {
-                    id: prev.length + 1,
-                  type: 'completed',
-                    timestamp,
-                  description: '✅ Stream completed successfully'
-                }])
-
                 // Finalize the message - just stop streaming
                 setMessages(prev => prev.map(msg => 
                   msg.id === messageId ? {
@@ -503,8 +445,6 @@ const StreamMonitor: React.FC = () => {
 
   const clearChat = () => {
     setMessages([])
-    setTokens([])
-    setEvents([])
     setCurrentResponse('')
     setRiskScores([])
     setInputWindowAnalyses([])
@@ -537,8 +477,8 @@ const StreamMonitor: React.FC = () => {
     }
 
     const frequency = parseInt(tempConfig.analysis_frequency)
-    if (isNaN(frequency) || frequency < 5 || frequency > 100) {
-      errors.analysis_frequency = 'Must be a number between 5 and 100'
+    if (isNaN(frequency) || frequency < 5 || frequency > 500) {
+      errors.analysis_frequency = 'Must be a number between 5 and 500'
     }
 
     const threshold = parseFloat(tempConfig.risk_threshold)
@@ -553,14 +493,15 @@ const StreamMonitor: React.FC = () => {
   // Save configuration
   const saveConfig = () => {
     if (validateConfig()) {
-      setAnalysisConfig({
+      const newConfig = {
         ...analysisConfig,
         analysis_window_size: parseInt(tempConfig.analysis_window_size),
         analysis_frequency: parseInt(tempConfig.analysis_frequency),
         risk_threshold: parseFloat(tempConfig.risk_threshold)
-      })
+      }
+      setAnalysisConfig(newConfig)
       setHasUnsavedChanges(false)
-      warning('Configuration Saved', 'Settings have been updated successfully!')
+      warning('Settings Updated', `Window: ${newConfig.analysis_window_size} • Freq: ${newConfig.analysis_frequency}x`)
     }
   }
 
@@ -592,12 +533,8 @@ const StreamMonitor: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <h1 className="text-sm xs:text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                  <span className="hidden xs:inline">Compliance AI Chat</span>
-                  <span className="xs:hidden">AI Chat</span>
+                  Chat
                 </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                  Real-time compliance monitoring
-                </p>
               </div>
             </div>
 
@@ -631,11 +568,8 @@ const StreamMonitor: React.FC = () => {
                 size="sm"
                 onClick={() => window.location.assign('/testing')}
                 icon={<BarChart3 className="w-4 h-4" />}
-                title="Go to Test Suite"
                 className="transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                <span className="hidden md:inline">Test Suite</span>
-              </Button>
+              />
 
               <Button
                 variant="outline"
@@ -643,24 +577,21 @@ const StreamMonitor: React.FC = () => {
                 onClick={() => setShowComplianceInfo(!showComplianceInfo)}
                 icon={<Info className="w-4 h-4" />}
                 className="hidden sm:flex"
-              >
-                <span className="hidden lg:inline">How it Works</span>
-                <span className="lg:hidden">Info</span>
-              </Button>
+              />
             </div>
           </div>
         </div>
 
-        {/* Mobile Debug Panel Toggle */}
+        {/* Mobile Analysis Panel Toggle */}
         <div className="lg:hidden flex-shrink-0 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 px-3 xs:px-4 py-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowDebugPanel(!showDebugPanel)}
-            icon={<Activity className="w-4 h-4" />}
-            className={`w-full justify-center ${showDebugPanel ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300' : ''}`}
+            icon={<Target className="w-4 h-4" />}
+            className={`w-full justify-center ${showDebugPanel ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/20 dark:border-purple-700 dark:text-purple-300' : ''}`}
           >
-            {showDebugPanel ? 'Hide Debug' : 'Show Debug'}
+            Analysis
           </Button>
         </div>
 
@@ -697,12 +628,9 @@ const StreamMonitor: React.FC = () => {
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <MessageSquare className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-lg xs:text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-                    Start a Safe Conversation
-                  </h3>
-                  <p className="text-sm xs:text-base text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-                    Send a message to begin. All responses are analyzed in real-time using sliding windows for compliance.
-                  </p>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    Send a message
+                  </div>
                 </motion.div>
               </div>
             ) : (
@@ -957,7 +885,7 @@ const StreamMonitor: React.FC = () => {
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
                         Frequency
                       </label>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">5-100 tokens</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">5-500 tokens</span>
                     </div>
                     <input
                       type="text"
@@ -1145,43 +1073,25 @@ const StreamMonitor: React.FC = () => {
             </div>
 
             {/* Quick Status */}
-            <div className="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 flex-wrap gap-2">
-              <div className="flex items-center space-x-2 xs:space-x-4">
-                {isStreaming && (
+            <div className="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center space-x-3">
+                {isStreaming ? (
                   <div className="flex items-center space-x-1">
                     <RefreshCw className="w-3 h-3 animate-spin" />
-                    <span>Analyzing & streaming...</span>
+                    <span className="text-blue-600">Active</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1">
+                    <Shield className="w-3 h-3" />
+                    <span>Ready</span>
                   </div>
                 )}
-                <div className="flex items-center space-x-1">
-                  <Shield className="w-3 h-3" />
-                  <span>Compliance active</span>
-                </div>
+                <span className="font-mono text-xs text-gray-500">
+                  {analysisConfig.analysis_window_size} • {analysisConfig.analysis_frequency}x
+                </span>
               </div>
-              <div className="flex items-center space-x-2 text-xs">
-                {/* Character Counter (outside input) */}
-                <span className={`font-medium ${
-                  currentMessage.length > 1000
-                    ? 'text-red-500'
-                    : currentMessage.length > 500
-                    ? 'text-amber-500'
-                    : 'text-gray-400 dark:text-gray-500'
-                }`}>
-                  {currentMessage.length}
-                </span>
-                {currentMessage.trim() && !isStreaming && (
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                )}
-                <span>•</span>
-                <span className="hidden xs:inline">
-                  Window Size: {analysisConfig.analysis_window_size} tokens
-                </span>
-                <span className="xs:hidden">{analysisConfig.analysis_window_size}t</span>
-                <span>•</span>
-                <span className="hidden xs:inline">
-                  Analysis Frequency: {analysisConfig.analysis_frequency}
-                </span>
-                <span className="xs:hidden">{analysisConfig.analysis_frequency}x</span>
+              <div className="text-xs text-gray-400 font-mono">
+                {currentMessage.length}
               </div>
             </div>
           </div>
@@ -1200,213 +1110,204 @@ const StreamMonitor: React.FC = () => {
         lg:order-2 order-2
         ${showDebugPanel ? 'lg:shadow-none shadow-2xl' : ''}
       `}>
-        <div className="flex-shrink-0 p-3 xs:p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-sm xs:text-base text-gray-900 dark:text-white flex items-center space-x-2">
-                <Activity className="w-4 h-4 xs:w-5 xs:h-5 text-purple-600" />
-                <span>Debug Console</span>
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Real-time analysis details
-              </p>
-            </div>
+        <div className="flex-shrink-0 p-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="flex items-center justify-end">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setShowDebugPanel(false)}
-              className="lg:hidden"
-              icon={<ChevronUp className="w-4 h-4" />}
-            />
+              className="lg:hidden p-1"
+            >
+              <X className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-3 xs:p-4 space-y-3 xs:space-y-4">
-          {/* Decision Timeline */}
+          {/* Real-Time Analysis Visualizer */}
           <div>
-            <div className="mb-2 flex items-center justify-between">
-              <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white flex items-center space-x-2">
-              <Clock className="w-3 h-3 xs:w-4 xs:h-4 text-blue-600" />
-              <span>Decision Timeline</span>
-                <Badge variant="secondary" size="sm">{events.length}</Badge>
-            </h4>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDecisionTimelineModal(true)}
-                className="p-1 h-6 w-6 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                title="Expand"
-              >
-                <Maximize2 className="w-3 h-3 text-blue-600" />
-              </Button>
-            </div>
-            
-            <div className="space-y-2 max-h-32 xs:max-h-48 overflow-y-auto">{events.length > 0 ? (
-                events.slice().reverse().map((event) => (
-                    <motion.div
-                      key={event.id}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className={`
-                      p-3 rounded-lg text-xs border-l-4
-                      ${event.type === 'blocked' 
-                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
-                        : event.type === 'risk_alert'
-                        ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
-                        : event.type === 'input_window_analysis'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                      }
-                    `}
-                    >
-                      <div className="font-mono text-xs text-gray-500 mb-1">
-                        {event.timestamp}
-                      </div>
-                      <div className="text-gray-700 dark:text-gray-300 font-medium">
-                        {event.description}
-                      </div>
-                      {event.risk !== undefined && (
-                        <div className="mt-1">
-                          <RiskBadge score={event.risk} />
-                        </div>
-                      )}
-                      {event.patterns && event.patterns.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {event.patterns.slice(0, 3).map((pattern, idx) => (
-                          <Badge key={idx} variant="warning" size="sm">{pattern}</Badge>
-                          ))}
-                        </div>
-                      )}
-                    </motion.div>
-                  ))
-              ) : (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-xs">No events yet</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* AI Response Stream */}
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white flex items-center space-x-2">
-              <Zap className="w-3 h-3 xs:w-4 xs:h-4 text-green-600" />
-              <span>Response Stream</span>
-                <Badge variant="success" size="sm">{tokens.length} tokens</Badge>
-            </h4>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowResponseStreamModal(true)}
-                className="p-1 h-6 w-6 hover:bg-green-100 dark:hover:bg-green-900/30"
-                title="Expand"
-              >
-                <Maximize2 className="w-3 h-3 text-green-600" />
-              </Button>
-            </div>
-
-            <div className="space-y-1 max-h-32 xs:max-h-48 overflow-y-auto">
-              {tokens.length > 0 ? (
-                tokens.slice(-20).map((token, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center justify-between p-2 rounded bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
-                  >
-                    <span className="font-mono text-xs text-gray-900 dark:text-white truncate flex-1 mr-2">
-                      "{token.text}"
-                    </span>
-                    <div className="flex items-center space-x-1 flex-shrink-0">
-                      <Badge variant="success" size="sm">✓</Badge>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                        {token.timestamp.split('.')[1]}
-                      </span>
-                    </div>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  <Zap className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-xs">
-                    {isStreaming ? "Waiting for tokens..." : "No response tokens yet"}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Live Statistics - Current Session Only */}
-          <div>
-            <h4 className="font-semibold text-xs xs:text-sm text-gray-900 dark:text-white mb-2 flex items-center space-x-2">
-              <BarChart3 className="w-3 h-3 xs:w-4 xs:h-4 text-purple-600" />
-              <span>Live Statistics</span>
-              <Badge variant="outline" className="text-xs">Current Session</Badge>
-            </h4>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2 text-center border border-blue-200 dark:border-blue-800">
-                <div className="font-bold text-blue-600">{inputWindowAnalyses.length}</div>
-                <div className="text-blue-700 dark:text-blue-300">Input Windows</div>
-              </div>
-              <div className="bg-green-50 dark:bg-green-900/20 rounded p-2 text-center border border-green-200 dark:border-green-800">
-                <div className="font-bold text-green-600">{responseWindows.length}</div>
-                <div className="text-green-700 dark:text-green-300">Response Windows</div>
-              </div>
-              <div className="bg-orange-50 dark:bg-orange-900/20 rounded p-2 text-center border border-orange-200 dark:border-orange-800">
-                <div className="font-bold text-orange-600">
-                  {riskScores.length > 0 ? Math.max(...riskScores).toFixed(2) : '0.00'}
-                </div>
-                <div className="text-orange-700 dark:text-orange-300">Max Risk</div>
-              </div>
-              <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-center border border-purple-200 dark:border-purple-800">
-                <div className="font-bold text-purple-600">
-                  {analysisConfig.analysis_frequency}x
-                </div>
-                <div className="text-purple-700 dark:text-purple-300">Efficiency</div>
-              </div>
-            </div>
-
-            {/* Session Performance Metrics */}
-            {inputWindowAnalyses.length > 0 && (
-              <div className="mt-3 p-3 bg-gray-100 dark:bg-gray-800 rounded border">
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Session Analysis</div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span>Windows Analyzed:</span>
-                    <span className="font-mono text-blue-600">{inputWindowAnalyses.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Avg Risk Score:</span>
-                    <span className="font-mono text-orange-600">
-                      {riskScores.length > 0 ? (riskScores.reduce((a, b) => a + b, 0) / riskScores.length).toFixed(3) : '0.000'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total Events:</span>
-                    <span className="font-mono text-purple-600">{events.length}</span>
-                  </div>
-                </div>
+            {isStreaming && (
+              <div className="mb-3 flex items-center space-x-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                <span className="text-sm text-purple-600 font-medium">Analyzing</span>
               </div>
             )}
+            
+            {/* Current Analysis Window */}
+            {responseWindows.length > 0 && (
+              <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                <div className="text-xs text-purple-700 dark:text-purple-300 mb-2 font-mono">
+                  Window {responseWindows[responseWindows.length - 1]?.window_number || responseWindows.length}
+                </div>
+                <div className="text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-3 rounded border font-mono text-xs leading-relaxed">
+                  "{responseWindows[responseWindows.length - 1]?.window_text.substring(0, 120)}..."
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+                  <div className="text-center">
+                    <div className="font-bold text-blue-600">{responseWindows[responseWindows.length - 1]?.pattern_score.toFixed(2)}</div>
+                    <div className="text-blue-700 dark:text-blue-300">Pattern Score</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-orange-600">{responseWindows[responseWindows.length - 1]?.presidio_score.toFixed(2)}</div>
+                    <div className="text-orange-700 dark:text-orange-300">ML Score</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-purple-600">{responseWindows[responseWindows.length - 1]?.total_score.toFixed(2)}</div>
+                    <div className="text-purple-700 dark:text-purple-300">Total Risk</div>
+                  </div>
+                </div>
+                {responseWindows[responseWindows.length - 1]?.triggered_rules.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-700">
+                    <div className="text-xs font-semibold text-red-700 dark:text-red-300 mb-2">Found:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {responseWindows[responseWindows.length - 1]?.triggered_rules.map((rule, idx) => (
+                        <Badge key={idx} variant="warning" size="sm">{getPatternDisplayName(rule)}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Status Indicator */}
+            {processingStatus !== 'idle' && (
+              <div className="mb-4">
+                {processingStatus === 'analyzing' && (
+                  <div className="flex items-center space-x-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Scanning input...</span>
+                  </div>
+                )}
+                {processingStatus === 'streaming' && (
+                  <div className="flex items-center space-x-2 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                    <Zap className="w-3 h-3" />
+                    <span>Streaming response...</span>
+                  </div>
+                )}
+                {processingStatus === 'complete' && (
+                  <div className="flex items-center space-x-2 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                    <Shield className="w-3 h-3" />
+                    <span>Complete • {responseWindows.length} windows</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
-            {/* Global Statistics (Collapsed by default) */}
-            <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded border">
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Global App Metrics</div>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span>Total Requests:</span>
-                  <span className="font-mono text-blue-600">{realtimeMetrics.total_requests}</span>
+          {/* Analysis History & Windows */}
+          <div>
+
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {(inputWindowAnalyses.length > 0 || responseWindows.length > 0) ? (
+                [...inputWindowAnalyses, ...responseWindows]
+                  .sort((a, b) => {
+                    // Sort by analysis position, with most recent at top
+                    if (a.analysis_type === b.analysis_type) {
+                      return (b.window_start || 0) - (a.window_start || 0)
+                    }
+                    // Input windows first, then response windows  
+                    return a.analysis_type === 'input' ? -1 : 1
+                  })
+                  .slice(0, 8)
+                  .map((analysis, index) => (
+                  <motion.div
+                    key={`${analysis.analysis_type}-${analysis.window_start}-${index}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`p-3 rounded-lg border-l-4 ${
+                      analysis.total_score >= analysisConfig.risk_threshold
+                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                        : analysis.total_score >= 0.3
+                        ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
+                        : 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <Badge 
+                          variant={analysis.analysis_type === 'input' ? 'secondary' : 'info'} 
+                          size="sm"
+                        >
+                          {analysis.analysis_type === 'input' ? '📥' : '📤'} #{index + 1}
+                        </Badge>
+                        <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
+                          Tokens {analysis.window_start}-{analysis.window_end}
+                        </span>
+                      </div>
+                      <RiskBadge score={analysis.total_score} />
+                    </div>
+                    
+                    <div className="text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded font-mono mb-2">
+                      "{analysis.window_text.substring(0, 80)}..."
+                    </div>
+                    
+                    {analysis.triggered_rules.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {analysis.triggered_rules.slice(0, 2).map((rule, idx) => (
+                          <Badge key={idx} variant="warning" size="sm">{getPatternDisplayName(rule)}</Badge>
+                        ))}
+                        {analysis.triggered_rules.length > 2 && (
+                          <Badge variant="outline" size="sm">+{analysis.triggered_rules.length - 2}</Badge>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
+                ))
+              ) : null}
+            </div>
+          </div>
+
+          {/* Session Summary */}
+          <div>
+            
+            {/* Key Metrics */}
+            <div className="space-y-3">
+              {/* Safety Status */}
+              <div className={`p-3 rounded-lg border ${
+                (inputWindowAnalyses.length > 0 || responseWindows.length > 0) 
+                  ? (riskScores.length > 0 && Math.max(...riskScores) >= analysisConfig.risk_threshold
+                      ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+                      : 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20')
+                  : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Shield className={`w-4 h-4 ${
+                      (inputWindowAnalyses.length > 0 || responseWindows.length > 0)
+                        ? (riskScores.length > 0 && Math.max(...riskScores) >= analysisConfig.risk_threshold
+                            ? 'text-red-600'
+                            : 'text-green-600')
+                        : 'text-gray-500'
+                    }`} />
+                    <span className={`text-sm font-semibold ${
+                      (inputWindowAnalyses.length > 0 || responseWindows.length > 0)
+                        ? (riskScores.length > 0 && Math.max(...riskScores) >= analysisConfig.risk_threshold
+                            ? 'text-red-700 dark:text-red-300'
+                            : 'text-green-700 dark:text-green-300')
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      {(inputWindowAnalyses.length === 0 && responseWindows.length === 0) 
+                        ? 'Ready'
+                        : (riskScores.length > 0 && Math.max(...riskScores) >= analysisConfig.risk_threshold
+                            ? 'Risk Detected'
+                            : 'Safe')}
+                    </span>
+                  </div>
+                  {riskScores.length > 0 && (
+                    <RiskBadge score={Math.max(...riskScores)} />
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span>Global Max Risk:</span>
-                  <span className="font-mono text-orange-600">{realtimeMetrics.max_risk_score.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Block Rate:</span>
-                  <span className="font-mono text-red-600">{realtimeMetrics.block_rate.toFixed(1)}%</span>
-                </div>
+                
+                {riskScores.length > 0 && (
+                  <div className="mt-1 text-xs font-mono text-gray-600 dark:text-gray-400">
+                    {Math.max(...riskScores).toFixed(2)}
+                  </div>
+                )}
+              </div>
+              
+              {/* Configuration */}
+              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs font-mono text-center text-gray-600 dark:text-gray-400">
+                {analysisConfig.analysis_window_size} • {analysisConfig.analysis_frequency}x
               </div>
             </div>
           </div>
@@ -1489,7 +1390,7 @@ const StreamMonitor: React.FC = () => {
           </motion.div>
         )}
 
-        {/* Decision Timeline Modal */}
+        {/* Analysis Windows Modal */}
         {showDecisionTimelineModal && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -1502,101 +1403,110 @@ const StreamMonitor: React.FC = () => {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center space-x-2">
-                  <Clock className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold">Decision Timeline</h3>
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold">All Analysis Windows</h3>
+                  <Badge variant="secondary" size="sm">{inputWindowAnalyses.length + responseWindows.length}</Badge>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setShowDecisionTimelineModal(false)}>
                   <X className="w-5 h-5" />
                 </Button>
               </div>
               <div className="p-5 overflow-y-auto max-h-[calc(85vh-64px)] space-y-3">
-                {events.length > 0 ? (
-                  events.slice().reverse().map((event) => (
+                {(inputWindowAnalyses.length > 0 || responseWindows.length > 0) ? (
+                  [...inputWindowAnalyses, ...responseWindows]
+                    .sort((a, b) => {
+                      // Sort by analysis position, with most recent at top
+                      if (a.analysis_type === b.analysis_type) {
+                        return (b.window_start || 0) - (a.window_start || 0)
+                      }
+                      // Input windows first, then response windows
+                      return a.analysis_type === 'input' ? -1 : 1
+                    })
+                    .map((analysis, index) => (
                     <div
-                      key={event.id}
+                      key={`${analysis.analysis_type}-${analysis.window_start}-${index}`}
                       className={`p-4 rounded-lg border-l-4 ${
-                        event.type === 'blocked'
+                        analysis.total_score >= analysisConfig.risk_threshold
                           ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                          : event.type === 'risk_alert'
-                          ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
-                          : event.type === 'input_window_analysis'
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : analysis.total_score >= 0.3
+                          ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
                           : 'border-green-500 bg-green-50 dark:bg-green-900/20'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono text-xs text-gray-500">{event.timestamp}</span>
-                        {event.risk !== undefined && <RiskBadge score={event.risk} />}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <Badge 
+                            variant={analysis.analysis_type === 'input' ? 'secondary' : 'info'} 
+                            size="sm"
+                          >
+                            {analysis.analysis_type === 'input' ? '📥' : '📤'} #{index + 1}
+                          </Badge>
+                          <span className="text-sm font-mono text-gray-600 dark:text-gray-400">
+                            Tokens {analysis.window_start}-{analysis.window_end} ({analysis.window_size} tokens)
+                          </span>
+                        </div>
+                        <RiskBadge score={analysis.total_score} />
                       </div>
-                      <div className="text-sm text-gray-800 dark:text-gray-200">{event.description}</div>
-                      {event.patterns && event.patterns.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {event.patterns.map((p, i) => (
-                            <Badge key={i} variant="warning" size="sm">{p}</Badge>
-                          ))}
+                      
+                      <div className="mb-3 p-3 bg-white dark:bg-gray-800 rounded border font-mono text-sm leading-relaxed">
+                        "{analysis.window_text}"
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-4 mb-3 text-sm">
+                        <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                          <div className="font-bold text-blue-600">{analysis.pattern_score.toFixed(3)}</div>
+                          <div className="text-blue-700 dark:text-blue-300 text-xs">Pattern Score</div>
+                        </div>
+                        <div className="text-center p-2 bg-orange-50 dark:bg-orange-900/20 rounded">
+                          <div className="font-bold text-orange-600">{analysis.presidio_score.toFixed(3)}</div>
+                          <div className="text-orange-700 dark:text-orange-300 text-xs">ML Score</div>
+                        </div>
+                        <div className="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
+                          <div className="font-bold text-purple-600">{analysis.total_score.toFixed(3)}</div>
+                          <div className="text-purple-700 dark:text-purple-300 text-xs">Total Risk</div>
+                        </div>
+                      </div>
+                      
+                      {analysis.triggered_rules.length > 0 && (
+                        <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <div className="text-sm font-semibold text-red-700 dark:text-red-300 mb-2">Found:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {analysis.triggered_rules.map((rule, idx) => (
+                              <Badge key={idx} variant="warning" size="sm">{getPatternDisplayName(rule)}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {analysis.presidio_entities && analysis.presidio_entities.length > 0 && (
+                        <div className="pt-3 border-t border-gray-200 dark:border-gray-700 mt-3">
+                          <div className="text-sm font-semibold text-orange-700 dark:text-orange-300 mb-2">ML Detected Entities:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {analysis.presidio_entities.map((entity, idx) => (
+                              <Badge key={idx} variant="secondary" size="sm">{entity.entity_type} ({(entity.confidence * 100).toFixed(0)}%)</Badge>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
                   ))
                 ) : (
-                  <div className="text-center text-gray-500 dark:text-gray-400 py-10">No events yet</div>
+                  <div className="text-center text-gray-500 dark:text-gray-400 py-20">
+                    <BarChart3 className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                    <h4 className="text-lg font-semibold mb-2">No Analysis Windows Yet</h4>
+                    <p className="text-sm">Send a message to see real-time analysis windows appear here</p>
+                  </div>
                 )}
               </div>
             </motion.div>
           </motion.div>
         )}
 
-        {/* Response Stream Modal */}
-        {showResponseStreamModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowResponseStreamModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center space-x-2">
-                  <Zap className="w-5 h-5 text-green-600" />
-                  <h3 className="text-lg font-semibold">Response Stream</h3>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowResponseStreamModal(false)}>
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-              <div className="p-5 overflow-y-auto max-h-[calc(85vh-64px)] space-y-2">
-                {tokens.length > 0 ? (
-                  tokens.map((token, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 rounded bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
-                    >
-                      <span className="font-mono text-sm text-gray-900 dark:text-white break-all mr-3">"{token.text}"</span>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="success" size="sm">✓</Badge>
-                        <span className="text-xs text-gray-500 font-mono">{token.timestamp.split('.')[1]}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-500 dark:text-gray-400 py-10">No response tokens yet</div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
       </AnimatePresence>
     </div>
   )
