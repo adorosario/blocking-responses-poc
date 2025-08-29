@@ -19,6 +19,12 @@ services:
       - RISK_THRESHOLD=${RISK_THRESHOLD:-0.9}
       - JUDGE_THRESHOLD=${JUDGE_THRESHOLD:-0.8}
       - ENABLE_JUDGE=${ENABLE_JUDGE:-true}
+      - ENABLE_SAFE_REWRITE=${ENABLE_SAFE_REWRITE:-true}
+      - ENABLE_AUDIT_LOGGING=${ENABLE_AUDIT_LOGGING:-true}
+      - HASH_SENSITIVE_DATA=${HASH_SENSITIVE_DATA:-true}
+      - PRESIDIO_CONFIDENCE_THRESHOLD=${PRESIDIO_CONFIDENCE_THRESHOLD:-0.6}
+      - PORT=${PORT:-8000}
+      - HOST=${HOST:-0.0.0.0}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080}
     volumes:
       # Mount source for development (comment out for production)
