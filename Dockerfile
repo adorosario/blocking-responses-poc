@@ -31,13 +31,16 @@ COPY app.py .
 COPY test_app.py .
 COPY test_app_basic.py .
 COPY example_client.py .
+COPY start.sh .
 COPY static/ ./static/
 
 # Copy built frontend from builder stage
 COPY --from=frontend-builder /app/frontend/dist ./static/frontend/
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Make startup script executable and create non-root user
+RUN chmod +x start.sh && \
+    useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
@@ -47,5 +50,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
-# Default command - uses PORT environment variable for Railway compatibility
-CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Default command - uses startup script for Railway compatibility
+CMD ["./start.sh"]

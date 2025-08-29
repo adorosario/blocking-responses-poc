@@ -11,4 +11,3 @@ sleepApplication = false
 restartPolicyType = "never"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 600
-startCommand = "uvicorn app:app --host 0.0.0.0 --port $PORT"
