@@ -343,6 +343,19 @@ uvicorn app:app --reload
 make dev
 ```
 
+### Railway Deployment (Recommended)
+```bash
+# 1. Connect your Git repo to Railway
+# 2. Add environment variables from .env.railway to Railway dashboard
+# 3. Set your OPENAI_API_KEY in Railway settings
+# 4. Deploy automatically on push
+
+# Railway will auto-detect:
+# - railway.toml configuration
+# - Dockerfile for API service
+# - frontend/Dockerfile for web interface
+```
+
 ### Docker Container
 ```bash
 # Basic deployment
@@ -356,6 +369,7 @@ make prod
 ```
 
 ### Production Deployment
+- **Railway**: Full-stack deployment with auto-scaling and monitoring
 - Multi-service architecture with health checks
 - Nginx reverse proxy with load balancing
 - Environment-based configuration

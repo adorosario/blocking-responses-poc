@@ -576,7 +576,23 @@ docker-compose --profile redis up -d
 
 ## 🚀 Production Deployment
 
-### Basic Production Setup
+### Railway (Recommended)
+
+**One-click deployment with Railway:**
+
+1. **Connect Repository**: Link your GitHub repo to Railway
+2. **Set Environment Variables**: Copy values from `.env.railway` to Railway dashboard
+3. **Add OpenAI API Key**: Set `OPENAI_API_KEY` in Railway environment
+4. **Deploy**: Railway auto-detects `railway.toml` and deploys both API and frontend
+
+```bash
+# Railway configuration included:
+# - railway.toml (service configuration)
+# - .env.railway (production environment template)
+# - Automatic Docker builds for API and frontend
+```
+
+### Basic Docker Production Setup
 
 ```bash
 # Create production environment
