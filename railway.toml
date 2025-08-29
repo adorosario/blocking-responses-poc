@@ -2,13 +2,12 @@
 # For multi-service, deploy frontend separately or use monorepo approach
 
 [build]
-builder = "dockerfile"
-dockerfilePath = "Dockerfile.railway"
+builder = "nixpacks"
 
 [deploy]
 numReplicas = 1
 sleepApplication = false
 restartPolicyType = "on-failure"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 600
-startCommand = "./start.sh"
+healthcheckTimeout = 300
+startCommand = "python railway-simple.py"
