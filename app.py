@@ -1348,18 +1348,19 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                     window_text = (window_text + piece)[-8000:]  # Keep for display purposes
                     response_text += piece
 
-                    # Create response windows for display (every ~25 tokens or window_size/6)
+                    # Create response windows for analysis based on configured frequency
                     response_tokens = token_count(response_text) if TIKTOKEN_AVAILABLE else len(response_text.split())
-                    window_threshold = max(25, settings.analysis_window_size // 6)
+                    analysis_frequency = chat_req.analysis_frequency or settings.analysis_frequency
                     
-                    if response_tokens > 0 and response_tokens % window_threshold == 0:
+                    if response_tokens > 0 and response_tokens % analysis_frequency == 0:
                         response_window_count += 1
                         # Record response window analysis for metrics
                         metrics.record_response_window()
                         
                         # Analyze recent AI output for compliance display
-                        window_start = max(0, response_tokens - window_threshold)
-                        recent_response = response_text[-500:] if len(response_text) > 500 else response_text
+                        analysis_window_size = chat_req.analysis_window_size or settings.analysis_window_size
+                        window_start = max(0, response_tokens - analysis_window_size)
+                        recent_response = response_text[-analysis_window_size:] if len(response_text) > analysis_window_size else response_text
                         
                         # Actually analyze the AI output window
                         window_compliance_result = pattern_detector.assess_compliance_risk(recent_response, chat_req.region)
@@ -1371,7 +1372,7 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
                                 "window_text": recent_response,
                                 "window_start": window_start,
                                 "window_end": response_tokens,
-                                "window_size": min(window_threshold, response_tokens),
+                                "window_size": min(analysis_window_size, response_tokens),
                                 "analysis_position": response_tokens,
                                 "pattern_score": window_compliance_result.score,
                                 "presidio_score": window_presidio_score,
