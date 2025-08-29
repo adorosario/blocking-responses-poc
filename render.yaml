@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: blocking-responses-api
+    env: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: free
+    region: oregon
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+    healthCheckPath: /api/health
