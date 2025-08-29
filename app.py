@@ -233,7 +233,7 @@ class AuditEvent(BaseModel):
 app = FastAPI(
     title="Blocking Responses API - Regulated Edition",
     description="Production-ready SSE proxy with PII/PHI/PCI compliance for regulated industries",
-    version="1.1.0",
+    version="1.2.0",
 )
 
 # Rate limiting

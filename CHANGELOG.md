@@ -5,6 +5,53 @@ All notable changes to the Blocking Responses API project will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-08-29
+
+### 🚀 Major Performance & Configuration Overhaul
+
+#### Critical Performance Improvements (5x Faster Streaming)
+- **STREAMING SPEED**: Reduced default `delay_ms` from 250ms to 50ms for dramatically faster response
+- **ANALYSIS OPTIMIZATION**: Changed default `analysis_frequency` from 200 to 100 tokens for better balance
+- **BUFFER EFFICIENCY**: Only analyze full buffer every 50 tokens instead of every token flush
+- **WINDOW ACCURACY**: Fixed fundamental token-based window calculation for precise content display
+
+#### Configuration System Cleanup
+- **UNIFIED RISK_THRESHOLD**: Fixed inconsistency (0.7 vs 0.9 vs 1.0) - now unified to 1.0 everywhere
+- **COMPLETE ENVIRONMENT VARIABLES**: Added all missing variables to .env.example with proper defaults
+- **DOCKER CONSISTENCY**: Updated docker-compose.yml with complete environment variable set
+- **CONFIGURABLE CONSTANTS**: Made all hardcoded performance values configurable
+
+#### Enhanced Detection & Audit Transparency
+- **DETAILED PATTERN DETECTION**: Added match positions, weights, and matched text to triggered rules
+- **ENHANCED PRESIDIO INTEGRATION**: Added confidence scores and entity positions to audit logs
+- **COMPLETE AUDIT LOGGING**: Full forensic information for compliance auditors and reviews
+- **UI TRANSPARENCY**: Expandable window text display with detailed incident information
+
+#### Window Analysis Fixes
+- **FIXED TOKEN EXTRACTION**: Windows now show exact N tokens that were analyzed (not characters)
+- **PROPER BOUNDARIES**: First window starts with response beginning, last window ends with response end
+- **ACCURATE DISPLAY**: Token ranges match actual analyzed content (200 tokens = 200 actual tokens)
+- **TOKEN ALIGNMENT**: Proper token boundary handling prevents cut-off words
+
+### Added
+- **New Environment Variables**: 15+ new configurable settings for performance tuning
+- **Enhanced CSS Styling**: Better details/summary element styling with visual indicators
+- **Quick Build Command**: Single command for development workflow in README
+- **Buffer Analysis Frequency**: Configurable frequency for expensive full-buffer analysis
+
+### Fixed
+- **Window Calculation Bug**: Fixed extract_analysis_window() to show actual analyzed content
+- **Streaming Performance**: 5x faster token emission with optimized delay settings
+- **Configuration Mismatches**: Aligned all default values across .env, docker-compose, and Settings
+- **Audit Log Detail**: Enhanced triggered_rules with complete Presidio and pattern information
+- **UI Details Elements**: Added proper CSS for expandable incident details
+
+### Enhanced
+- **Complete Detection Chain**: Both regex patterns and ML entities in audit logs with full context
+- **Forensic Positioning**: Exact character positions for compliance evidence and investigation
+- **Risk Calculation Transparency**: Individual pattern weights and ML confidence scores visible
+- **Decision Auditability**: Clear reasoning for block vs allow decisions with complete data trail
+
 ## [1.1.1] - 2025-08-25
 
 ### Fixed
