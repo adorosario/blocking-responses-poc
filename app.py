@@ -2,6 +2,7 @@
 # python -m spacy download en_core_web_lg
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import AsyncIterator, Dict, Any, List, Optional
 from pydantic import BaseModel, Field, SecretStr
@@ -191,6 +192,9 @@ class ChatRequest(BaseModel):
     api_key: Optional[str] = Field(
         None, description="OpenAI API key (overrides environment variable)", max_length=200
     )
+    # Dynamic analysis configuration
+    analysis_window_size: Optional[int] = Field(None, ge=50, le=500, description="Token window size for analysis")
+    analysis_frequency: Optional[int] = Field(None, ge=5, le=100, description="Analyze every N tokens")
 
 
 class ComplianceResult(BaseModel):
@@ -236,6 +240,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+# Mount static files for frontend
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/", StaticFiles(directory="static/frontend", html=True), name="frontend")
 
 # -------------------- Compliance Policy Configuration --------------------
 COMPLIANCE_POLICY: Dict[str, Any] = {
@@ -672,10 +680,10 @@ def tail_tokens(text: str, n_tokens: int) -> str:
 class SlidingWindowAnalyzer:
     """Efficient sliding window analysis for compliance checking"""
     
-    def __init__(self):
-        self.window_size = settings.analysis_window_size
-        self.overlap_size = settings.analysis_overlap
-        self.frequency = settings.analysis_frequency
+    def __init__(self, window_size=None, frequency=None, overlap_size=None):
+        self.window_size = window_size or settings.analysis_window_size
+        self.overlap_size = overlap_size or settings.analysis_overlap
+        self.frequency = frequency or settings.analysis_frequency
         self.last_analysis_position = 0
         self.analysis_history = []
         self.cumulative_risk = 0.0
@@ -1322,7 +1330,10 @@ async def chat_stream_sse(request: Request, chat_req: ChatRequest):
             # Now we focus on AI output analysis during streaming
 
             # Initialize sliding window analyzer for response monitoring (display purposes)
-            analyzer = SlidingWindowAnalyzer()
+            analyzer = SlidingWindowAnalyzer(
+                window_size=chat_req.analysis_window_size,
+                frequency=chat_req.analysis_frequency
+            )
             response_text = ""
             response_window_count = 0
 

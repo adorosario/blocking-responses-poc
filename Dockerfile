@@ -3,9 +3,11 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies including curl for health checks
+# Install system dependencies including Node.js for frontend build
 RUN apt-get update && apt-get install -y \
     curl \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -17,12 +19,23 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
     python -m spacy download en_core_web_lg
 
+# Build frontend
+COPY frontend/package*.json ./frontend/
+WORKDIR /app/frontend
+RUN npm ci
+COPY frontend/ .
+RUN npm run build
+
 # Copy application code
+WORKDIR /app
 COPY app.py .
 COPY test_app.py .
 COPY test_app_basic.py .
 COPY example_client.py .
 COPY static/ ./static/
+
+# Copy built frontend to static directory
+COPY --from=0 /app/frontend/dist ./static/frontend/
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
